@@ -150,7 +150,7 @@ def parse_debit_csv(content: str) -> dict:
 
     if header is None:
         raise DebitParseError('header_not_found',
-            "No se encontró la fila de la cuenta (número de cliente) — revisa que el archivo sea el CSV de 'Transacciones del mes'.")
+            "Formato de CSV no reconocido. Esta app es una plantilla que solo lee el CSV de un banco; para usar el tuyo hay que escribir un parser (ver README, «Adding your bank»).")
     if len(header) < 9:
         raise DebitParseError('header_too_short',
             "La fila de la cuenta está incompleta — el formato del archivo pudo haber cambiado.")

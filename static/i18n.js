@@ -362,6 +362,7 @@
     'Revisa los datos y confirma para guardar.': 'Review the data and confirm to save.',
     'Ya existe un estado de esta tarjeta con esta fecha de corte; guardar lo reemplazará.': 'A statement for this card with this statement date already exists; saving will replace it.',
     'No se detectó ninguna transacción y ya existe un estado con esta fecha de corte. No se puede reemplazar con uno vacío.': 'No transactions were detected and a statement with this statement date already exists. It cannot be replaced with an empty one.',
+    'Formato de estado de cuenta no reconocido. Esta app es una plantilla que solo lee el formato de un banco; para usar el tuyo hay que escribir un parser (ver README, «Adding your bank»).': "Statement format not recognized. This app is a template that only reads one bank's format; using yours requires writing a parser (see README, “Adding your bank”).",
     'Validación vs Pago de Contado': 'Check vs Full Payment',
     'sin total impreso': 'no printed total',
     'cuadra': 'reconciles',
@@ -445,6 +446,7 @@
     'Bonif.': 'Bonus',
 
     // ── debit_account.html ──
+    'Formato de CSV no reconocido. Esta app es una plantilla que solo lee el CSV de un banco; para usar el tuyo hay que escribir un parser (ver README, «Adding your bank»).': "CSV format not recognized. This app is a template that only reads one bank's CSV; using yours requires writing a parser (see README, “Adding your bank”).",
     '🏦 Cuenta de Débito': '🏦 Debit Account',
     'Cuenta de Débito': 'Debit Account',
     '📄 Cargar CSV': '📄 Upload CSV',

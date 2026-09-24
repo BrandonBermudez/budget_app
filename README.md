@@ -4,6 +4,12 @@
 
 A single-user personal finance tracker built with Flask. It keeps a net-worth dashboard and imports one bank's credit-card statement (PDF or markdown) and checking-account CSV formats, then categorizes and analyzes the transactions. Server-rendered Jinja pages with vanilla JavaScript, Spanish/English UI, USD amounts, and local JSON storage (no database).
 
+> [!IMPORTANT]
+> **This is a template, not a ready-to-use app for your bank.**
+> The statement and CSV importers were written for one specific bank's file layouts and will reject files from any other bank ("format not recognized"). Out of the box you get the manual features (dashboard, bills, budgets, projection). The transactions, checking-account and cash-flow pages stay empty until you write importers for your own bank. See [Adding your bank](#adding-your-bank), which includes a prompt you can give an AI coding assistant.
+>
+> **ES:** Esto es una plantilla. Los importadores solo leen el formato de un banco; para el tuyo hay que escribir parsers nuevos (ver [Adding your bank](#adding-your-bank)).
+
 ## Features
 
 - **Dashboard:** accounts, credit cards, installment plans, one-time expenses, reserves, salary, and net-worth history snapshots with a chart.
@@ -38,7 +44,7 @@ On Windows you can also double-click `start_server.bat` once the venv exists.
 
 The app opens your browser at `http://127.0.0.1:5050`, or the next free port up to 5069. It always binds to `127.0.0.1`. Launching it a second time just opens the running instance.
 
-On first run `data/budget_data.json` is created from the sample seed in `data/defaults.json`. Edit or reset the values from the dashboard.
+On first run the app shows the sample seed from `data/defaults.json`. `data/budget_data.json` is created the first time you save a change. Edit or reset the values from the dashboard.
 
 ## Configuration
 
@@ -86,9 +92,104 @@ Copy `data/utilities.example.json` to `data/utilities.json` (gitignored):
 
 Keyword rules for categorizing statement rows (uppercase substring match, longest keyword wins). The shipped lists are short generic examples. Add your own merchants from the UI; the app saves them to this file. Keep the category ids: the UI and translations depend on them.
 
+## Adding your bank
+
+The rest of the app never reads bank files. It only consumes the dicts returned by two parser functions. Replace those functions (keep their names and return shapes) and everything downstream works: categorization, spend analytics, validation banners, the cash-flow page.
+
+### What works without a parser
+
+| Works as is | Needs your parser |
+|---|---|
+| Dashboard, net-worth history, bills (manual entry), category budgets, projection, backups, export/import | Credit-card statement upload → Transactions page and statement detail |
+| | Checking-account CSV upload → Debit Account and Cash Flow pages |
+| | Email fetch (also needs `.env` settings and `STATEMENT_EMAIL_SUBJECT`) |
+
+### Credit card: `parser.py`
+
+`parse_statement(content: str) -> dict`. `content` is the statement as text: a PDF is converted to markdown first by `convert_pdf_to_markdown` (markitdown), so look at that output, not the PDF, when writing the parser. Required keys:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `card_name`, `card_key` | str | Display name and stable id. Use `_normalise_card_name()` so `data/card_map.json` is honored. |
+| `fecha_corte` | str `YYYY-MM-DD` | Statement closing date. **Empty string = upload rejected.** |
+| `fecha_limite`, `fecha_bonif` | str | Payment due date, grace date (`''` if absent). |
+| `saldo_dolares` | float or None | Closing balance. |
+| `saldo_anterior_usd` | float, optional | Previous balance (defaults to `0.0`). |
+| `pago_minimo_usd`, `pago_contado_usd` | float | Minimum payment and full-payment amount. `pago_contado_usd` drives the validation check. |
+| `transactions` | list | See below. |
+| `unparsed` | list[str] | Lines that looked like transactions but didn't parse. Shown to the user, never dropped silently. |
+
+Each transaction: `ref` (str, unique within the statement), `fecha` (`YYYY-MM-DD`), `descripcion` (str), `monto_usd` (float, negative for credits), `tipo` (`cargo` purchase, `credito` refund/payment, `cuota` installment payment, `bonificacion` reward/interest line), `subtarjeta` (str: which card on the account made the charge, e.g. `principal`; any constant if your bank doesn't split them).
+
+`validate_statement()` compares the sum of `cargo` + `cuota` with `pago_contado_usd`. If your bank prints no equivalent total, return `0.0`: the check is skipped and the UI shows "no printed total".
+
+Bank-specific rules to revisit in `parser.py` and `static/spend.js`: payment rows are recognized by `PAGO RECIBIDO` and installment-plan reversals by `CR COMPRA PLZ`. Change those patterns to your bank's wording.
+
+### Checking account: `debit_parser.py`
+
+`decode_bank_csv(raw_bytes) -> str` (the current one tries UTF-8, then cp1252) and `parse_debit_csv(content: str) -> dict`. Raise `DebitParseError(code, message)` when the file can't be trusted. Required keys:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `cuenta`, `nombre`, `moneda` | str | Account number, holder label, currency. Shown in the upload preview. |
+| `numero_cliente` | str | Customer number (`''` if absent). |
+| `saldo_inicial`, `saldo_final`, `saldo_disponible` | float | Opening, closing and available balance. `saldo_inicial` seeds the balance-chain check. |
+| `fecha_snapshot` | str `YYYY-MM-DD` | Export date. |
+| `transactions` | list, at least 1 | See below. |
+| `resumen_codigos`, `resumen_total` | dict / None | Bank footer totals per code. Use `{}` and `None` if the bank prints none. |
+| `warnings` | list | Rows you couldn't parse (`{"code", "line", "row"}`). Never drop rows silently. |
+
+Each transaction: `fecha` (`YYYY-MM-DD`), `referencia` (str), `codigo` (str, transaction type code or `''`), `descripcion` (str), `debito` and `credito` (float ≥ 0, `0.0` when blank), `balance` (float, running balance after the row). Duplicate detection uses every field except `descripcion` (`_DEBIT_DEDUP_FIELDS` in `app.py`), so re-uploading an overlapping export is safe.
+
+`validate_debit_csv()` replays `saldo_inicial` through every row's `debito`/`credito` and compares with `balance`. It only works if your CSV has a running-balance column. If not, compute `balance` yourself from the opening balance.
+
+Card payments in the CSV are matched to cards by the last 4 digits (`payment_last4` in `card_map.json`). The row pattern is `PAGO_CARD_RE` in `static/debit.js` (also used by `static/cashflow.js`).
+
+### Prompt template for an AI coding assistant
+
+Remove names, account numbers and addresses from your sample files before sharing them with any AI tool. Replace real digits with the same number of `0`s, keeping the layout exact.
+
+```text
+I'm adapting the open-source "Presupuesto" Flask app (this repo) to my bank.
+The app is a template: parser.py and debit_parser.py only understand the
+original author's bank. Rewrite them for my bank. Keep every function name,
+signature and return shape documented in README.md "Adding your bank".
+
+My bank: <bank name / country>
+Currency on statements: <e.g. USD only | USD and local currency>
+
+1. Credit-card statement. Here is the text markitdown produces from my PDF
+   (python -c "from markitdown import MarkItDown; print(MarkItDown().convert('statement.pdf').text_content)"),
+   with personal data replaced:
+   <paste>
+   - The statement date is labeled: <label>
+   - The full-payment / new-balance total is labeled: <label>
+   - Payments to the card look like: <example row>
+   - Refunds look like: <example row>
+   - Installment ("cuotas") rows look like: <example row, or "none">
+
+2. Checking-account export (<CSV | XLSX | other>, encoding if known):
+   <paste the header and ~10 rows, personal data replaced>
+   - Date format: <DD/MM/YYYY | MM/DD/YYYY | ...>
+   - Does it have a running-balance column? <yes/no>
+   - A card-payment row looks like: <example row>
+
+Requirements:
+- Never drop a row silently: anything that looks like a transaction but
+  fails to parse goes into `unparsed` (credit) or `warnings` (debit).
+- Reject non-finite amounts (inf/nan).
+- Update the payment / plan-reversal patterns (PAGO RECIBIDO,
+  CR COMPRA PLZ) in parser.py and static/spend.js to my bank's wording.
+- Update the card-payment pattern PAGO_CARD_RE in static/debit.js.
+- Show me the parsed output for my samples and confirm the statement total
+  and the CSV balance chain both validate.
+- Replace the default categories in data/categories.json with merchants that
+  appear in my sample (keep the category ids).
+```
+
 ## Limitations
 
-- **One bank's formats only.** The parsers understand a single bank's credit-card statement and checking-account CSV layouts. Other banks need new parsers.
+- **Template: one bank's formats only.** The parsers understand a single bank's credit-card statement and checking-account CSV layouts and reject everything else. See [Adding your bank](#adding-your-bank).
 - **USD amounts only.**
 - **Single user, local storage.** Data lives in JSON files under `data/`. There is no database and no multi-user support. Unless `BUDGET_APP_USER`/`BUDGET_APP_PASS` are set, `/api/data` returns the whole dataset with no authentication.
 - **Windows-first.** Other platforms should work via `python app.py` but are untested.

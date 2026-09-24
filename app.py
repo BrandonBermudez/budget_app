@@ -712,7 +712,7 @@ def api_upload_statement():
 
     if not parsed['fecha_corte']:
         return jsonify({
-            "error": "No se pudo detectar la fecha de corte — revisa que el archivo sea un estado de cuenta válido."
+            "error": "Formato de estado de cuenta no reconocido. Esta app es una plantilla que solo lee el formato de un banco; para usar el tuyo hay que escribir un parser (ver README, «Adding your bank»)."
         }), 422
 
     # Stash the parsed result in the session — nothing is written to the

@@ -1118,7 +1118,7 @@ async function handleFileSelect(file) {
       body: fd
     });
     const data = await res.json();
-    if (!res.ok) { toast('⚠', data.error || tr('Error al procesar archivo'), true); return; }
+    if (!res.ok) { toast('⚠', tr(data.error || 'Error al procesar archivo'), true); return; }
 
     pendingUpload = data;
     showPreview(data);
