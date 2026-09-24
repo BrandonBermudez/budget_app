@@ -1,0 +1,79 @@
+{
+  "_version": 0,
+  "accounts": [
+    {
+      "id": "acc1",
+      "name": "#1",
+      "label": "Cuenta Ejemplo 1",
+      "disponible": 1000.0
+    },
+    {
+      "id": "acc2",
+      "name": "#2",
+      "label": "Cuenta Ejemplo 2",
+      "disponible": 500.0
+    }
+  ],
+  "credit_cards": [
+    {
+      "id": "cc1",
+      "name": "Tarjeta Ejemplo",
+      "dollars": 250.0
+    }
+  ],
+  "installments": [
+    {
+      "id": "inst1",
+      "name": "Compra Ejemplo",
+      "total": 600.0,
+      "months_total": 6,
+      "months_paid": 2,
+      "monthly": 100.0
+    }
+  ],
+  "one_time": [
+    {
+      "id": "ot1",
+      "name": "Gasto Ejemplo",
+      "amount": 100.0
+    }
+  ],
+  "reserves": [
+    {
+      "id": "res1",
+      "name": "Fondo de Emergencia",
+      "amount": 300.0
+    }
+  ],
+  "salary": {
+    "gross": 2000.0,
+    "deductions": 200.0,
+    "net": 1800.0
+  },
+  "history": [
+    {
+      "id": "a1b2c3d4",
+      "date": "2026-01-02",
+      "total": 1500.0,
+      "delta": null,
+      "pct": null,
+      "note": "Ejemplo"
+    },
+    {
+      "id": "b2c3d4e5",
+      "date": "2026-02-06",
+      "total": 1450.0,
+      "delta": -50.0,
+      "pct": -3.33,
+      "note": "Ejemplo"
+    },
+    {
+      "id": "c3d4e5f6",
+      "date": "2026-03-06",
+      "total": 1520.0,
+      "delta": 70.0,
+      "pct": 4.83,
+      "note": "Ejemplo"
+    }
+  ]
+}

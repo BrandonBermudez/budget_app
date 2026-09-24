@@ -1,0 +1,28 @@
+# Secrets and local environment
+.env
+venv/
+__pycache__/
+*.pyc
+.flask_session/
+
+# Personal data (never commit)
+data/budget_data.json
+data/card_map.json
+data/utilities.json
+data/*.corrupt-*
+data/*.bak*
+data/backups/
+data/.instance.lock
+
+# Bank exports and statements
+*.csv
+*.pdf
+*.xlsx
+
+# Images, except curated screenshots of synthetic data
+*.png
+!docs/screenshots/*.png
+
+# Tooling
+.playwright-mcp/
+.claude/

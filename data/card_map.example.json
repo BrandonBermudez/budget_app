@@ -1,0 +1,8 @@
+{
+  "cards": [
+    {"key": "example_card", "name": "Example Card", "color": "#4f7ef7",
+     "account_suffixes": ["XXXXX0000"], "payment_last4": ["0000"],
+     "header_patterns": ["EXAMPLE\\s+CARD"],
+     "note": "Copy this file to card_map.json with your own cards. account_suffixes: the masked account number printed on the credit-card statement header. payment_last4: the last 4 digits in 'PAGO xxxx-xx**-****-NNNN' rows of the checking-account CSV (can differ from the account suffix). header_patterns: regexes matched (case-insensitive, uppercased text) against the statement header when the account number isn't listed; cards are tried in file order."}
+  ]
+}

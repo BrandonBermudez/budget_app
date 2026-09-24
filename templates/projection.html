@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Próximos 3 meses · Presupuesto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #080b12;
+      --surface:   #0e1220;
+      --surface-2: #141929;
+      --border:    #1e2438;
+      --border-2:  #252c42;
+      --accent:    #4f7ef7;
+      --accent-dim:rgba(79,126,247,.12);
+      --green:     #2dd4a0;
+      --amber:     #f5a623;
+      --amber-dim: rgba(245,166,35,.12);
+      --red:       #f75c5c;
+      --text:      #dde2f0;
+      --text-2:    #8b93ab;
+      --text-3:    #828aa8;
+      --radius-sm: 8px;
+      --radius:    14px;
+      --font:      'Inter', system-ui, sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+      --transition:.18s cubic-bezier(.4,0,.2,1);
+    }
+    html { font-size: 14px; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .topbar-brand .icon { width: 28px; height: 28px; background: var(--accent-dim); border: 1px solid rgba(79,126,247,.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .nav-links { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+    .nav-btn { padding: 5px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all var(--transition); text-decoration: none; display: inline-flex; align-items: center; }
+    .nav-btn:hover { color: var(--text-2); }
+    .nav-btn.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .btn-icon { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-2); background: transparent; color: var(--text-2); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; }
+    .btn-icon:hover { background: var(--accent-dim); color: var(--accent); }
+    .nav-btn:focus-visible, .btn-icon:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Análisis sub-nav. Identical CSS + markup in cash_flow.html,
+       category_budgets.html, bills.html and projection.html (only the active tab differs);
+       change all four together. ── */
+    .subnav { display: flex; flex-wrap: wrap; gap: 2px; padding: 8px 28px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .subnav-tab { padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); text-decoration: none; white-space: nowrap; transition: all var(--transition); }
+    .subnav-tab:hover { color: var(--text-2); }
+    .subnav-tab.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .subnav-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 900px) { .subnav { padding: 8px 14px; } }
+
+    .main { padding: 28px 28px 60px; max-width: 1200px; margin: 0 auto; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-top: 20px; }
+    .card-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); margin-bottom: 16px; }
+    .note { font-size: 12px; color: var(--text-3); margin-top: 12px; }
+
+    .warn { margin-top: 16px; padding: 10px 14px; border: 1px solid var(--amber); background: var(--amber-dim); color: var(--amber); border-radius: var(--radius-sm); font-size: 12px; }
+    .warn ul { margin: 6px 0 0 18px; color: var(--text-2); }
+    .warn li { margin-top: 3px; }
+    .warn .sub { color: var(--text-3); margin-top: 6px; }
+
+    .fresh { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 20px; font-size: 12px; color: var(--text-2); }
+    .fresh .flag { color: var(--amber); }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: right; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); white-space: nowrap; vertical-align: top; }
+    th:first-child, td:first-child { text-align: left; }
+    tr:last-child td { border-bottom: none; }
+    .muted { color: var(--text-3); }
+    .committed { color: var(--green); }
+    .amber { color: var(--amber); }
+
+    .months { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; }
+    .months .card { margin-top: 20px; }
+    .month-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .month-name { font-family: var(--mono); font-weight: 600; font-size: 16px; }
+    .month-total { font-family: var(--mono); font-weight: 600; font-size: 16px; }
+    details.section { border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+    details.section.c { background: var(--surface-2); }
+    details.section.v { border: 1px solid var(--border); }
+    details.section summary { display: flex; justify-content: space-between; gap: 10px; cursor: pointer; list-style: none; font-weight: 600; font-size: 13px; }
+    details.section summary::-webkit-details-marker { display: none; }
+    details.section summary::after { content: '▾'; color: var(--text-3); font-size: 11px; }
+    details.section[open] summary::after { content: '▴'; }
+    details.section summary .amt { margin-left: auto; font-family: var(--mono); }
+    .count { display: block; font-size: 11px; font-weight: 400; color: var(--text-3); }
+    .line { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 12px; }
+    .line:first-of-type { margin-top: 8px; }
+    .line .lbl { color: var(--text); overflow-wrap: anywhere; }
+    .line .meta { display: block; font-size: 11px; color: var(--text-3); }
+    .line .amt { font-family: var(--mono); white-space: nowrap; }
+    .badge { display: inline-block; font-size: 10px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--border-2); color: var(--text-3); margin-left: 4px; }
+    .badge.inferred { color: var(--accent); border-color: rgba(79,126,247,.4); }
+    .badge.ambiguous { color: var(--amber); border-color: var(--amber); }
+    .total-row { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-2); font-weight: 600; }
+    .total-row .amt { font-family: var(--mono); }
+
+    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 14px; transition: opacity .3s; }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Nav on its own row below 900px, as in the other Análisis pages. */
+    @media (max-width: 900px) {
+      .topbar { flex-wrap: wrap; row-gap: 8px; height: auto; padding: 10px 14px; }
+      .nav-links { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+    }
+    @media (max-width: 640px) {
+      .main { padding: 20px 16px 48px; }
+      .months { grid-template-columns: 1fr; }
+      th { white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)" data-i18n="Cargando datos…">Cargando datos…</div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="icon">💧</div>
+    <span data-i18n="Próximos 3 meses">Próximos 3 meses</span>
+  </div>
+  <nav class="nav-links">
+    <a class="nav-btn" href="/" data-i18n="Presupuesto">Presupuesto</a>
+    <a class="nav-btn" href="/transactions" data-i18n="Transacciones">Transacciones</a>
+    <a class="nav-btn" href="/debit-account" data-i18n="🏦 Cuenta de Débito">🏦 Cuenta de Débito</a>
+    <a class="nav-btn active" href="/cash-flow" aria-current="true">📊 <span data-i18n="Análisis">Análisis</span></a>
+  </nav>
+  <button class="btn-icon lang-toggle" onclick="toggleLang()" style="margin-left:8px" aria-label="Switch language">EN</button>
+</header>
+
+<!-- Análisis sub-nav. Identical markup + CSS in cash_flow.html,
+     category_budgets.html, bills.html and projection.html (only the active tab differs). -->
+<nav class="subnav" aria-label="Análisis">
+  <a class="subnav-tab" href="/cash-flow" data-i18n="Flujo de caja">Flujo de caja</a>
+  <a class="subnav-tab" href="/category-budgets" data-i18n="Presupuesto por categoría">Presupuesto por categoría</a>
+  <a class="subnav-tab" href="/bills" data-i18n="Pagos">Pagos</a>
+  <a class="subnav-tab active" href="/projection" aria-current="page" data-i18n="Próximos 3 meses">Próximos 3 meses</a>
+</nav>
+
+<main class="main">
+  <p class="note" style="margin-top:0" data-i18n="Obligaciones confirmadas: pagos contractuales o explícitos. Gasto variable esperado: hábitos recientes, no compromisos. Las cuotas de tarjeta caen en el mes de corte que las cobra.">Obligaciones confirmadas: pagos contractuales o explícitos. Gasto variable esperado: hábitos recientes, no compromisos. Las cuotas de tarjeta caen en el mes de corte que las cobra.</p>
+
+  <div id="warnings"></div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="Resumen">Resumen</div>
+    <div class="table-wrap" id="summary"></div>
+  </div>
+
+  <div class="months" id="months"></div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="Vigencia de las fuentes">Vigencia de las fuentes</div>
+    <div class="fresh" id="freshness"></div>
+  </div>
+</main>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/spend.js"></script>
+<script src="/static/projection.js"></script>
+<script>
+'use strict';
+
+let BUDGET = null, DEBIT_TXS = [];
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function money(n) {
+  const s = '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n < 0 && Math.abs(n) >= 0.005 ? '−' + s : s;
+}
+
+function monthLabel(m) { return `${monthNameFor(+m.slice(5, 7) - 1)} ${m.slice(0, 4)}`; }
+
+function catLabel(cid) {
+  if (!cid || cid === '_uncat') return tr('Sin categoría');
+  return catLabelFor(cid, CATEGORIES[cid]?.label ?? cid);
+}
+
+const SOURCE_LABEL = {
+  card_installment: 'Cuota de tarjeta',
+  manual_installment: 'Cuota manual',
+  subscription: 'Suscripción o servicio activo',
+  recurring: 'Estimado de gasto reciente',
+};
+const CONFIDENCE_LABEL = { confirmed: 'Confirmado', inferred: 'Inferido', ambiguous: 'Ambiguo' };
+
+function planRef(p) { return `${p.cardName} ${p.n}/${p.total} · ${tr('corte')} ${p.month}`; }
+
+// One line of "why is this here" under each amount.
+function lineMeta(c) {
+  const d = c.detail;
+  const parts = [tr(SOURCE_LABEL[c.source])];
+  switch (c.source) {
+    case 'card_installment':
+      parts.push(`${catLabel(c.cid)} · ${tr('cuota')} ${d.cuota}/${d.total}${d.ending ? ' · ' + tr('última') : ''}`,
+                 `${tr('visto en el corte')} ${d.lastCorte}`);
+      break;
+    case 'manual_installment':
+      parts.push(`${tr('cuota')} ${d.cuota}/${d.total}`);
+      if (d.reason === 'progress') parts.push(`${tr('el estado de cuenta muestra')} ${d.candidates.map(planRef).join('; ')}`);
+      else if (d.outcome === 'ambiguous') parts.push(`${d.candidates.length} ${tr('planes candidatos')}: ${d.candidates.map(planRef).join('; ')}`);
+      else parts.push(tr('sin plan equivalente en los estados de cuenta'));
+      break;
+    default:
+      parts.push(`${catLabel(c.cid)} · ${d.monthsCount}/${d.windowMonths} ${tr('meses')} · ${tr('último')} ${d.lastDate}`);
+  }
+  return parts.join(' · ');
+}
+
+// lineLabel/lineMeta return raw text (imported names, merchants): callers must esc().
+function lineLabel(c) {
+  if (c.source === 'card_installment') return `${c.detail.cardName} · ${catLabel(c.cid)}`;
+  return c.label;
+}
+
+function lineHtml(c) {
+  return `<div class="line">
+    <div><span class="lbl">${esc(lineLabel(c))}</span> <span class="badge ${c.confidence}">${esc(tr(CONFIDENCE_LABEL[c.confidence]))}</span>
+      <span class="meta">${esc(lineMeta(c))}</span></div>
+    <div class="amt ${c.confidence === 'ambiguous' ? 'amber' : ''}">${money(c.usd)}</div>
+  </div>`;
+}
+
+function sectionHtml(kind, title, items, total) {
+  const count = items.length ? `${items.length} ${tr('conceptos')}` : tr('Ninguno');
+  return `<details class="section ${kind}">
+    <summary><span>${esc(title)}<span class="count">${esc(count)}</span></span>
+      <span class="amt ${kind === 'c' ? 'committed' : ''}">${money(total)}</span></summary>
+    ${items.map(lineHtml).join('')}
+  </details>`;
+}
+
+function warningItems(w) {
+  switch (w.code) {
+    case 'stale_card':
+      return [tr('Estado de cuenta atrasado respecto a las otras tarjetas'),
+              w.cards.map(c => `${c.cardName}: ${tr('último corte')} ${c.latestCutoff}`)];
+    case 'unvalidated_statement':
+      return [tr('Último estado de cuenta sin validar contra el total impreso'),
+              w.cards.map(c => `${c.cardName} ${c.latestCutoff}: ${tr(c.validation === 'mismatch' ? 'no cuadra' : 'sin total impreso para validar')}`)];
+    case 'installment_progress_conflict':
+      return [tr('Cuota manual con progreso distinto al estado de cuenta: se cuenta como ambigua. Si ya terminó, actualiza su progreso en Presupuesto.'),
+              w.items.map(r => `${r.manual.name} (${tr('manual')} ${r.manual.months_paid}/${r.manual.months_total}, ${money(r.manual.monthly)}) ↔ ${r.candidates.map(planRef).join('; ')}`)];
+    case 'ambiguous_installment':
+      return [tr('Cuota manual que coincide con varios planes (o un plan con varias cuotas manuales): se cuenta sin fusionar.'),
+              w.items.map(r => `${r.manual.name} ↔ ${r.candidates.map(planRef).join('; ')}`)];
+    case 'plan_not_seen':
+      return [tr('Plan a plazo que no aparece en los cortes más recientes de su tarjeta: se cuenta como ambiguo. Puede haberse pagado por adelantado.'),
+              w.plans.map(planRef)];
+  }
+  return [w.code, []];
+}
+
+function renderWarnings(P) {
+  const el = document.getElementById('warnings');
+  if (!P.warnings.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="warn" role="status">⚠ ${esc(tr('Revisar'))}
+    <ul>${P.warnings.map(w => {
+      const [title, items] = warningItems(w);
+      return `<li>${esc(title)}${items.length ? `<ul>${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}</li>`;
+    }).join('')}</ul>
+    <div class="sub">${esc(tr('Los avisos no bloquean la proyección.'))}</div>
+  </div>`;
+}
+
+function renderSummary(P) {
+  document.getElementById('summary').innerHTML = `<table>
+    <thead><tr>
+      <th>${esc(tr('Mes'))}</th>
+      <th>${esc(tr('Obligaciones confirmadas'))}</th>
+      <th>${esc(tr('Gasto variable esperado'))}</th>
+      <th>${esc(tr('Estimado total'))}</th>
+    </tr></thead>
+    <tbody>${P.months.map(m => `<tr>
+      <td>${esc(monthLabel(m.month))}</td>
+      <td class="committed">${money(m.committedTotal)}${m.ambiguousTotal > 0.005
+        ? `<span class="meta amber" style="display:block;font-size:10px">${esc(tr('incl. ambiguo'))} ${money(m.ambiguousTotal)}</span>` : ''}</td>
+      <td>${money(m.variableTotal)}</td>
+      <td><strong>${money(m.total)}</strong></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderMonths(P) {
+  document.getElementById('months').innerHTML = P.months.map(m => `<div class="card">
+    <div class="month-head"><span class="month-name">${esc(monthLabel(m.month))}</span></div>
+    ${sectionHtml('c', tr('Obligaciones confirmadas'), m.committed, m.committedTotal)}
+    ${sectionHtml('v', tr('Gasto variable esperado'), m.variable, m.variableTotal)}
+    <div class="total-row"><span>${esc(tr('Estimado total'))}</span><span class="amt">${money(m.total)}</span></div>
+  </div>`).join('');
+}
+
+function renderFreshness(P) {
+  const md = P.metadata, none = tr('sin datos');
+  const cards = md.cards.length ? md.cards.map(c => {
+    const flags = [c.stale ? tr('atrasado') : '', c.validated ? '' : tr('sin validar')].filter(Boolean);
+    return `<div class="${flags.length ? 'flag' : ''}">${esc(c.cardName)}: ${esc(tr('corte'))} ${esc(c.latestCutoff)}${flags.length ? ' · ' + esc(flags.join(', ')) : ' · ' + esc(tr('validado'))}</div>`;
+  }).join('') : `<div class="flag">${esc(tr('Sin estados de cuenta'))}</div>`;
+  const win = P.windowMonths.length ? `${P.windowMonths[0]} → ${P.windowMonths[P.windowMonths.length - 1]}` : none;
+  document.getElementById('freshness').innerHTML = cards + `
+    <div class="${md.debitStale ? 'flag' : ''}">${esc(tr('Último movimiento de débito'))}: ${esc(md.latestDebitDate || none)}${md.debitStale ? ' · ' + esc(tr('atrasado')) : ''}</div>
+    <div>${esc(tr('Ventana de gasto recurrente (meses de corte)'))}: ${esc(win)}</div>`;
+}
+
+function render() {
+  const P = buildProjection({ budget: BUDGET, debitTxs: DEBIT_TXS });
+  renderWarnings(P);
+  renderSummary(P);
+  renderMonths(P);
+  renderFreshness(P);
+}
+
+async function boot() {
+  applyStaticAll();
+  onLangChange(() => { if (BUDGET) render(); });
+  // The window is "the 3 months after today": recompute when the tab comes
+  // back, so a page left open across a month boundary advances (APK resume).
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && BUDGET) render(); });
+  try {
+    const [data, categories, statements, account] = await Promise.all(
+      ['/api/data', '/api/categories', '/api/statements', '/api/debit-account'].map(async u => {
+        const r = await fetch(u);
+        if (!r.ok) throw new Error(u);
+        return r.json();
+      }));
+    loadSpend({ statements, categories });
+    BUDGET = data;
+    DEBIT_TXS = account.transactions || [];
+    render();
+  } catch (e) {
+    document.getElementById('warnings').innerHTML = `<div class="warn" role="alert">${esc(tr('Error al cargar datos'))}</div>`;
+  } finally {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 400);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presupuesto por categoría · Presupuesto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #080b12;
+      --surface:   #0e1220;
+      --surface-2: #141929;
+      --border:    #1e2438;
+      --border-2:  #252c42;
+      --accent:    #4f7ef7;
+      --accent-btn:#3760d9;
+      --accent-dim:rgba(79,126,247,.12);
+      --green:     #2dd4a0;
+      --red:       #f75c5c;
+      --red-dim:   rgba(247,92,92,.12);
+      --text:      #dde2f0;
+      --text-2:    #8b93ab;
+      --text-3:    #828aa8;
+      --radius-sm: 8px;
+      --radius:    14px;
+      --radius-lg: 20px;
+      --font:      'Inter', system-ui, sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+      --transition:.18s cubic-bezier(.4,0,.2,1);
+    }
+    html { font-size: 14px; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+    /* ── Topbar: .topbar / .nav-links / .nav-btn rules match transactions.html;
+       buttons and focus rules below are this page's own. ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .topbar-brand .icon { width: 28px; height: 28px; background: var(--accent-dim); border: 1px solid rgba(79,126,247,.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .nav-links { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+    .nav-btn { padding: 5px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all var(--transition); text-decoration: none; display: inline-flex; align-items: center; }
+    .nav-btn:hover { color: var(--text-2); }
+    .nav-btn.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .nav-btn:focus-visible, .btn:focus-visible, .btn-icon:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Análisis sub-nav. Identical CSS + markup in cash_flow.html,
+       category_budgets.html, bills.html and projection.html (only the active tab differs);
+       change all four together. ── */
+    .subnav { display: flex; flex-wrap: wrap; gap: 2px; padding: 8px 28px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .subnav-tab { padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); text-decoration: none; white-space: nowrap; transition: all var(--transition); }
+    .subnav-tab:hover { color: var(--text-2); }
+    .subnav-tab.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .subnav-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 900px) { .subnav { padding: 8px 14px; } }
+
+    .main { padding: 28px 28px 60px; max-width: 960px; margin: 0 auto; }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); margin: 32px 0 14px; display: flex; align-items: center; gap: 12px; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); border: none; font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity var(--transition); white-space: nowrap; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: var(--accent-btn); color: #fff; }
+    .btn-ghost   { background: var(--border); color: var(--text-2); }
+    .btn-danger  { background: var(--red-dim); color: var(--red); }
+    .btn-icon    { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-2); background: transparent; color: var(--text-2); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; transition: background var(--transition), color var(--transition); }
+    .btn-icon:hover { background: var(--accent-dim); border-color: rgba(79,126,247,.4); color: var(--accent); }
+
+    /* ── Month picker ── */
+    .month-bar { display: flex; align-items: center; gap: 10px; }
+    .month-bar label { font-size: 12px; color: var(--text-2); }
+    select, .modal input { background: var(--bg); color: var(--text); border: 1px solid var(--border-2); border-radius: var(--radius-sm); padding: 7px 10px; font-family: var(--mono); font-size: 13px; }
+
+    /* ── Summary ── */
+    .summary-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+    .summary-period { font-family: var(--mono); font-weight: 600; font-size: 15px; }
+    .summary-pct { font-family: var(--mono); font-size: 13px; }
+    .kv { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+    .kv .k { color: var(--text-2); }
+    .kv .v { font-family: var(--mono); font-weight: 600; }
+    .kv.sep { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 9px; }
+    .bar { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 10px 0; }
+    .bar > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+    .bar.over > span { background: var(--red); }
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
+    .muted { color: var(--text-3); }
+
+    /* ── Rows ── */
+    .brow { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .brow:last-child { border-bottom: none; }
+    .brow-name { display: flex; align-items: center; gap: 8px; font-weight: 500; min-width: 0; }
+    .brow-name span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .brow-actual { font-family: var(--mono); font-weight: 600; text-align: right; }
+    .brow-meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 18px; font-family: var(--mono); font-size: 11px; color: var(--text-2); padding-left: 16px; }
+    .brow-bar { grid-column: 1 / -1; padding-left: 16px; }
+    .brow-bar .bar { margin: 2px 0 0; }
+    .brow-actions { grid-column: 1 / -1; display: flex; gap: 8px; padding-left: 16px; }
+    .empty { color: var(--text-2); font-size: 13px; padding: 8px 0; }
+    .note { color: var(--text-3); font-size: 12px; margin-top: 10px; }
+
+    /* ── Modal / toast / loading ── */
+    .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; }
+    .backdrop.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius-lg); padding: 28px; width: 400px; max-width: 95vw; }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .modal label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
+    .modal input { width: 100%; }
+    .modal-error { color: var(--red); font-size: 12px; min-height: 18px; margin-top: 6px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+    .modal-footer .spacer { flex: 1; }
+    .toast { position: fixed; bottom: 28px; right: 28px; z-index: 1000; display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .25s, transform .25s; }
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    .toast.error { border-color: var(--red); }
+    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 14px; transition: opacity .3s; }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) {
+      .topbar { flex-wrap: wrap; row-gap: 8px; height: auto; padding: 10px 14px; }
+      .nav-links { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+    }
+    @media (max-width: 560px) {
+      .main { padding: 18px 16px 48px; }
+      .brow-meta, .brow-bar, .brow-actions { padding-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)" data-i18n="Cargando datos…">Cargando datos…</div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="icon">🎯</div>
+    <span data-i18n="Presupuesto por categoría">Presupuesto por categoría</span>
+  </div>
+  <nav class="nav-links">
+    <a class="nav-btn" href="/" data-i18n="Presupuesto">Presupuesto</a>
+    <a class="nav-btn" href="/transactions" data-i18n="Transacciones">Transacciones</a>
+    <a class="nav-btn" href="/debit-account" data-i18n="🏦 Cuenta de Débito">🏦 Cuenta de Débito</a>
+    <a class="nav-btn active" href="/cash-flow" aria-current="true">📊 <span data-i18n="Análisis">Análisis</span></a>
+  </nav>
+  <button class="btn-icon lang-toggle" onclick="toggleLang()" style="margin-left:8px" aria-label="Switch language">EN</button>
+</header>
+
+<!-- Análisis sub-nav. Identical markup + CSS in cash_flow.html,
+     category_budgets.html, bills.html and projection.html (only the active tab differs). -->
+<nav class="subnav" aria-label="Análisis">
+  <a class="subnav-tab" href="/cash-flow" data-i18n="Flujo de caja">Flujo de caja</a>
+  <a class="subnav-tab active" href="/category-budgets" aria-current="page" data-i18n="Presupuesto por categoría">Presupuesto por categoría</a>
+  <a class="subnav-tab" href="/bills" data-i18n="Pagos">Pagos</a>
+  <a class="subnav-tab" href="/projection" data-i18n="Próximos 3 meses">Próximos 3 meses</a>
+</nav>
+
+<main class="main">
+  <div class="month-bar">
+    <label for="month-select" data-i18n="Mes de corte">Mes de corte</label>
+    <select id="month-select" onchange="selectMonth(this.value)"></select>
+  </div>
+  <div id="content"></div>
+</main>
+
+<div class="backdrop" id="target-backdrop" onclick="if (event.target === this) closeTarget()" role="dialog" aria-modal="true" aria-labelledby="target-title">
+  <div class="modal">
+    <div class="modal-title" id="target-title"></div>
+    <label for="target-input" data-i18n="Meta mensual (USD)">Meta mensual (USD)</label>
+    <input id="target-input" type="text" inputmode="decimal" autocomplete="off" onkeydown="if (event.key === 'Enter') saveTarget()" />
+    <div class="modal-error" id="target-error" role="alert"></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="target-remove" onclick="removeTarget()" data-i18n="Quitar meta">Quitar meta</button>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost" onclick="closeTarget()" data-i18n="Cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="target-save" onclick="saveTarget()" data-i18n="Guardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-icon">✓</span>&nbsp;<span id="toast-msg"></span></div>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/spend.js"></script>
+<script src="/static/budgets.js"></script>
+<script>
+'use strict';
+
+let CSRF_TOKEN = null;
+let DATA_VERSION = 0;
+let TARGETS = {};          // _local.category_budgets_cents, as stored (incl. hidden ones)
+let selectedMonth = null;
+let editingId = null;
+let busy = false;
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Cents precision only here, at display.
+function usd(n) {
+  const r = Math.round(n * 100) / 100;
+  return (r < 0 ? '−$' : '$') + Math.abs(r).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function pct(ratio) { return ratio === null ? '—' : Math.round(ratio * 100) + '%'; }
+
+function monthLabel(m) {
+  const [y, mo] = m.split('-');
+  return `${monthNameFor(Number(mo) - 1)} ${y}`;
+}
+
+function catLabel(cid) {
+  if (cid === BUDGET_UNCAT) return tr('Sin categoría');
+  return catLabelFor(cid, CATEGORIES[cid]?.label ?? cid);
+}
+
+function catColor(cid) {
+  const c = CATEGORIES[cid]?.color;
+  return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : '#828aa8';
+}
+
+function barHtml(ratio) {
+  const w = Math.max(0, Math.min(1, ratio || 0)) * 100;
+  return `<div class="bar${ratio > 1 ? ' over' : ''}"><span style="width:${w.toFixed(1)}%"></span></div>`;
+}
+
+/* ── Load ── */
+async function loadAll() {
+  const [tok, data, categories, statements] = await Promise.all([
+    fetch('/api/csrf-token'), fetch('/api/data'), fetch('/api/categories'), fetch('/api/statements'),
+  ].map(p => p.then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })));
+  CSRF_TOKEN = tok.csrf_token;
+  applyData(data);
+  loadSpend({ statements, categories });
+}
+
+function applyData(data) {
+  DATA_VERSION = data._version ?? 0;
+  TARGETS = data._local?.category_budgets_cents || {};
+}
+
+async function boot() {
+  applyStaticAll();
+  onLangChange(() => { renderMonthSelect(); render(); });
+  try {
+    await loadAll();
+    renderMonthSelect();
+    render();
+  } catch (e) {
+    toast('⚠', tr('Error al cargar datos'), true);
+  } finally {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 400);
+  }
+}
+
+/* ── Render ── */
+function renderMonthSelect() {
+  const months = budgetMonths();
+  if (!months.includes(selectedMonth)) selectedMonth = months[0] ?? null;
+  const sel = document.getElementById('month-select');
+  sel.innerHTML = months.map(m =>
+    `<option value="${esc(m)}"${m === selectedMonth ? ' selected' : ''}>${esc(monthLabel(m))}</option>`).join('');
+  sel.disabled = !months.length;
+}
+
+function selectMonth(m) { selectedMonth = m; render(); }
+
+function render() {
+  const el = document.getElementById('content');
+  if (!selectedMonth) {
+    el.innerHTML = `<div class="card empty" style="margin-top:20px">${esc(tr('Aún no hay estados de cuenta. Carga uno en Transacciones para ver el gasto por categoría.'))}</div>`;
+    return;
+  }
+  const b = monthBudget(TARGETS, CATEGORIES, selectedMonth);
+  const withTarget = b.rows.filter(r => r.targetCents !== null);
+  const withoutTarget = b.rows.filter(r => r.targetCents === null);
+  const target = b.totalTargetCents / 100;
+  const actual = b.totalActualWithTargetUsd;
+  const ratio = b.totalTargetCents > 0 ? actual / target : null;
+  const diff = target - actual;
+  const over = Math.round(diff * 100) < 0;
+
+  el.innerHTML = `
+    <div class="section-label">${esc(tr('Resumen'))}</div>
+    <div class="card">
+      <div class="summary-head">
+        <span class="summary-period">${esc(monthLabel(b.month))}</span>
+        <span class="summary-pct ${ratio === null ? 'muted' : over ? 'neg' : 'pos'}">${ratio === null ? '—' : esc(pct(ratio) + ' ' + tr('usado'))}</span>
+      </div>
+      <div class="kv"><span class="k">${esc(tr('Meta total'))}</span><span class="v">${usd(target)}</span></div>
+      <div class="kv"><span class="k">${esc(tr('Gasto en categorías con meta'))}</span><span class="v${over ? ' neg' : ''}">${usd(actual)}</span></div>
+      ${barHtml(ratio)}
+      <div class="kv"><span class="k">${esc(tr(over ? 'Excedido' : 'Restante'))}</span><span class="v ${over ? 'neg' : 'pos'}">${usd(Math.abs(diff))}</span></div>
+      <div class="kv sep"><span class="k">${esc(tr('Gasto sin meta'))}</span><span class="v">${usd(b.totalActualUsd - actual)}</span></div>
+      <div class="kv"><span class="k">${esc(tr('Gasto total del mes'))}</span><span class="v">${usd(b.totalActualUsd)}</span></div>
+      ${withTarget.length ? '' : `<div class="note">${esc(tr('Aún no tienes metas. Fija una en cualquier categoría de abajo.'))}</div>`}
+    </div>
+
+    ${withTarget.length ? `
+      <div class="section-label">${esc(tr('Con meta'))}</div>
+      <div class="card">${withTarget.map(rowHtml).join('')}</div>` : ''}
+
+    ${withoutTarget.length ? `
+      <div class="section-label">${esc(tr('Sin meta'))}</div>
+      <div class="card">${withoutTarget.map(rowHtml).join('')}</div>` : ''}
+
+    ${b.rows.length ? '' : `<div class="card empty" style="margin-top:14px">${esc(tr('Sin gasto este mes.'))}</div>`}
+    <p class="note">${esc(tr('Gasto por mes de corte: cargos + cuotas, con reembolsos restados. Sin categoría no admite meta.'))}</p>`;
+}
+
+function rowHtml(r) {
+  const cid = r.categoryId;
+  const has = r.targetCents !== null;
+  const over = has && Math.round(r.varianceUsd * 100) < 0;
+  const label = catLabel(cid);
+  let meta = '', bar = '', actions = '';
+  if (has) {
+    meta = `<span>${esc(tr('Meta'))} ${usd(r.targetCents / 100)}</span>
+      <span class="${over ? 'neg' : 'pos'}">${esc(tr(over ? 'Excedido' : 'Restante'))} ${usd(Math.abs(r.varianceUsd))}</span>
+      <span>${esc(pct(r.ratio) + ' ' + tr('usado'))}</span>`;
+    bar = `<div class="brow-bar">${barHtml(r.ratio)}</div>`;
+    actions = `<button class="btn-icon" data-edit="${esc(cid)}" aria-label="${esc(tr('Editar meta') + ': ' + label)}">✎ ${esc(tr('Editar meta'))}</button>
+      <button class="btn-icon" data-remove="${esc(cid)}" aria-label="${esc(tr('Quitar meta') + ': ' + label)}">${esc(tr('Quitar meta'))}</button>`;
+  } else if (cid !== BUDGET_UNCAT && CATEGORIES[cid]) {
+    actions = `<button class="btn-icon" data-edit="${esc(cid)}" aria-label="${esc(tr('Fijar meta') + ': ' + label)}">+ ${esc(tr('Fijar meta'))}</button>`;
+  }
+  return `<div class="brow">
+    <div class="brow-name"><span class="dot" style="background:${catColor(cid)}"></span><span>${esc(label)}</span></div>
+    <div class="brow-actual${over ? ' neg' : ''}">${usd(r.actualUsd)}</div>
+    ${meta ? `<div class="brow-meta">${meta}</div>` : ''}
+    ${bar}
+    ${actions ? `<div class="brow-actions">${actions}</div>` : ''}
+  </div>`;
+}
+
+document.getElementById('content').addEventListener('click', e => {
+  const edit = e.target.closest('[data-edit]');
+  if (edit) return openTarget(edit.dataset.edit);
+  const rm = e.target.closest('[data-remove]');
+  if (rm) return confirmRemove(rm.dataset.remove);
+});
+
+/* ── Edit / remove ── */
+let opener = null;
+
+function openTarget(cid) {
+  if (cid === BUDGET_UNCAT || !CATEGORIES[cid]) return;
+  editingId = cid;
+  opener = document.activeElement;
+  const cur = TARGETS[cid];
+  const has = Number.isInteger(cur) && cur > 0;
+  document.getElementById('target-title').textContent = catLabel(cid);
+  const input = document.getElementById('target-input');
+  input.value = has ? centsToEditString(cur) : '';
+  document.getElementById('target-error').textContent = '';
+  document.getElementById('target-remove').style.display = has ? '' : 'none';
+  document.getElementById('target-backdrop').classList.add('open');
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+function closeTarget() {
+  const bd = document.getElementById('target-backdrop');
+  if (!bd.classList.contains('open')) return;
+  const cid = editingId;
+  editingId = null;
+  bd.classList.remove('open');
+  // The opener itself, unless a save re-rendered it away: then its
+  // replacement for the same category.
+  const btn = opener && opener.isConnected ? opener
+    : [...document.querySelectorAll('[data-edit]')].find(b => b.dataset.edit === cid);
+  opener = null;
+  (btn || document.getElementById('month-select')).focus();
+}
+
+const PARSE_ERRORS = {
+  empty: 'Escribe un monto. Para quitar la meta usa "Quitar meta".',
+  zero: 'La meta debe ser mayor que $0. Para quitarla usa "Quitar meta".',
+  invalid: 'Monto inválido. Usa solo números y punto decimal, p. ej. 250.00',
+  too_large: 'La meta máxima es $1,000,000.',
+};
+
+async function saveTarget() {
+  if (!editingId || busy) return;
+  const parsed = parseDollarsToCents(document.getElementById('target-input').value);
+  if (parsed.error) {
+    document.getElementById('target-error').textContent = tr(PARSE_ERRORS[parsed.error]);
+    return;
+  }
+  if (await write('PUT', editingId, { cents: parsed.cents })) {
+    closeTarget();
+    toast('✓', tr('Meta guardada'));
+  }
+}
+
+async function removeTarget() {
+  if (!editingId || busy) return;
+  const cid = editingId;
+  if (await confirmRemove(cid)) closeTarget();
+}
+
+async function confirmRemove(cid) {
+  if (busy) return false;
+  if (!confirm(tr('¿Quitar la meta de esta categoría?') + '\n' + catLabel(cid))) return false;
+  const ok = await write('DELETE', cid, {});
+  if (ok) toast('✓', tr('Meta quitada'));
+  return ok;
+}
+
+// One write; on success adopt the server's targets + version. A 409 means
+// another tab/page saved first: reload everything and let the user retry.
+async function write(method, cid, body) {
+  busy = true;
+  try {
+    const res = await fetch('/api/category-budgets/' + encodeURIComponent(cid), {
+      method,
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ ...body, _version: DATA_VERSION }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      await loadAll();
+      renderMonthSelect();
+      render();
+      toast('⚠', tr('Los datos cambiaron en otra sesión. Se recargaron; intenta de nuevo.'), true);
+      return false;
+    }
+    if (!res.ok) {
+      toast('⚠', out.error || tr('No se pudo guardar'), true);
+      return false;
+    }
+    DATA_VERSION = out.version;
+    TARGETS = out.category_budgets_cents;
+    render();
+    return true;
+  } catch (e) {
+    toast('⚠', tr('No se pudo guardar'), true);
+    return false;
+  } finally {
+    busy = false;
+  }
+}
+
+/* ── Toast ── */
+let toastTimer = null;
+function toast(icon, msg, isError = false) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent = msg;
+  el.classList.toggle('error', isError);
+  el.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visible'), 3500);
+}
+
+document.addEventListener('keydown', e => {
+  const bd = document.getElementById('target-backdrop');
+  if (!bd.classList.contains('open')) return;
+  // No close while a save is in flight: its result still needs the modal.
+  if (e.key === 'Escape' && !busy) closeTarget();
+  if (e.key !== 'Tab') return;
+  // Trap Tab inside the open modal.
+  const els = [...bd.querySelectorAll('input, button')].filter(el => el.offsetParent !== null && !el.disabled);
+  const first = els[0], last = els[els.length - 1];
+  if (!bd.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
+boot();
+</script>
+</body>
+</html>

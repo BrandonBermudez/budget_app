@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flujo de caja · Presupuesto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #080b12;
+      --surface:   #0e1220;
+      --surface-2: #141929;
+      --border:    #1e2438;
+      --border-2:  #252c42;
+      --accent:    #4f7ef7;
+      --accent-dim:rgba(79,126,247,.12);
+      --green:     #2dd4a0;
+      --amber:     #f5a623;
+      --amber-dim: rgba(245,166,35,.12);
+      --red:       #f75c5c;
+      --text:      #dde2f0;
+      --text-2:    #8b93ab;
+      --text-3:    #828aa8;
+      --radius-sm: 8px;
+      --radius:    14px;
+      --font:      'Inter', system-ui, sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+      --transition:.18s cubic-bezier(.4,0,.2,1);
+    }
+    html { font-size: 14px; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .topbar-brand .icon { width: 28px; height: 28px; background: var(--accent-dim); border: 1px solid rgba(79,126,247,.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .nav-links { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+    .nav-btn { padding: 5px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all var(--transition); text-decoration: none; display: inline-flex; align-items: center; }
+    .nav-btn:hover { color: var(--text-2); }
+    .nav-btn.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .btn-icon { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-2); background: transparent; color: var(--text-2); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; }
+    .btn-icon:hover { background: var(--accent-dim); color: var(--accent); }
+
+    /* ── Análisis sub-nav. Identical CSS + markup in cash_flow.html,
+       category_budgets.html, bills.html and projection.html (only the active tab differs);
+       change all four together. ── */
+    .subnav { display: flex; flex-wrap: wrap; gap: 2px; padding: 8px 28px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .subnav-tab { padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); text-decoration: none; white-space: nowrap; transition: all var(--transition); }
+    .subnav-tab:hover { color: var(--text-2); }
+    .subnav-tab.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .subnav-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 900px) { .subnav { padding: 8px 14px; } }
+
+    .main { padding: 28px 28px 60px; max-width: 1200px; margin: 0 auto; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-top: 20px; }
+    .card-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); margin-bottom: 16px; }
+    .note { font-size: 12px; color: var(--text-3); margin-top: 12px; }
+
+    .tabs { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; width: fit-content; flex-wrap: wrap; }
+    .tab { padding: 4px 12px; border-radius: 8px; border: none; background: transparent; font-family: var(--font); font-size: 11px; font-weight: 500; color: var(--text-3); cursor: pointer; white-space: nowrap; }
+    .tab.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .nav-btn:focus-visible, .tab:focus-visible, .btn-icon:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .period-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--text-3); }
+    .period-bar select { background: var(--bg); color: var(--text); border: 1px solid var(--border-2); border-radius: 6px; padding: 4px 8px; font-family: var(--mono); font-size: 12px; }
+
+    .warn { margin-top: 16px; padding: 10px 14px; border: 1px solid var(--amber); background: var(--amber-dim); color: var(--amber); border-radius: var(--radius-sm); font-size: 12px; }
+
+    .chart-container { position: relative; height: 280px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: right; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); white-space: nowrap; vertical-align: top; }
+    th:first-child, td:first-child { text-align: left; }
+    tr:last-child td { border-bottom: none; }
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
+    .muted { color: var(--text-3); }
+    .excl { display: block; font-size: 10px; color: var(--text-3); cursor: help; }
+
+    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 14px; transition: opacity .3s; }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Nav on its own row below 900px, as in category_budgets.html. */
+    @media (max-width: 900px) {
+      .topbar { flex-wrap: wrap; row-gap: 8px; height: auto; padding: 10px 14px; }
+      .nav-links { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+    }
+    @media (max-width: 640px) {
+      .main { padding: 20px 16px 48px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos…</div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="icon">💧</div>
+    <span data-i18n="Flujo de caja">Flujo de caja</span>
+  </div>
+  <nav class="nav-links">
+    <a class="nav-btn" href="/" data-i18n="Presupuesto">Presupuesto</a>
+    <a class="nav-btn" href="/transactions" data-i18n="Transacciones">Transacciones</a>
+    <a class="nav-btn" href="/debit-account" data-i18n="🏦 Cuenta de Débito">🏦 Cuenta de Débito</a>
+    <a class="nav-btn active" href="/cash-flow" aria-current="page">📊 <span data-i18n="Análisis">Análisis</span></a>
+  </nav>
+  <button class="btn-icon lang-toggle" onclick="toggleLang()" style="margin-left:8px" aria-label="Switch language">EN</button>
+</header>
+
+<!-- Análisis sub-nav. Identical markup + CSS in cash_flow.html,
+     category_budgets.html, bills.html and projection.html (only the active tab differs). -->
+<nav class="subnav" aria-label="Análisis">
+  <a class="subnav-tab active" href="/cash-flow" aria-current="page" data-i18n="Flujo de caja">Flujo de caja</a>
+  <a class="subnav-tab" href="/category-budgets" data-i18n="Presupuesto por categoría">Presupuesto por categoría</a>
+  <a class="subnav-tab" href="/bills" data-i18n="Pagos">Pagos</a>
+  <a class="subnav-tab" href="/projection" data-i18n="Próximos 3 meses">Próximos 3 meses</a>
+</nav>
+
+<main class="main">
+
+  <!-- Same from→to period convention as /transactions, over this page's own
+       months (debit activity ∪ statement corte months). -->
+  <div class="period-bar">
+    <span data-i18n="Período">Período</span>
+    <select id="range-from" onchange="setRange(this.value, document.getElementById('range-to').value)" aria-label="Desde"></select>
+    <span aria-hidden="true">→</span>
+    <select id="range-to" onchange="setRange(document.getElementById('range-from').value, this.value)" aria-label="Hasta"></select>
+    <div class="tabs" id="range-presets">
+      <button class="tab" data-preset="all" onclick="setRangePreset(null)" data-i18n="Todo el período">Todo el período</button>
+      <button class="tab" data-preset="12" onclick="setRangePreset(12)" data-i18n="Últimos 12 meses">Últimos 12 meses</button>
+      <button class="tab" data-preset="6" onclick="setRangePreset(6)" data-i18n="Últimos 6 meses">Últimos 6 meses</button>
+      <button class="tab" data-preset="3" onclick="setRangePreset(3)" data-i18n="Últimos 3 meses">Últimos 3 meses</button>
+    </div>
+  </div>
+
+  <div id="unmapped-warning" class="warn" role="alert" style="display:none"></div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="Ingresos, egresos y neto por mes">Ingresos, egresos y neto por mes</div>
+    <div class="chart-container" id="cf-chart-container"><canvas id="cf-chart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap" id="cf-table"></div>
+    <p class="note" data-i18n="Los pagos a tarjeta desde la cuenta de débito se excluyen: ese dinero ya se cuenta como gasto de tarjeta, según el mes de corte del estado de cuenta.">Los pagos a tarjeta desde la cuenta de débito se excluyen: ese dinero ya se cuenta como gasto de tarjeta, según el mes de corte del estado de cuenta.</p>
+    <p class="note" data-i18n="Ingresos y egresos de débito van por mes calendario; el gasto de tarjeta, por mes de corte. Cerca del corte, un mes puede verse mejor o peor de lo real.">Ingresos y egresos de débito van por mes calendario; el gasto de tarjeta, por mes de corte. Cerca del corte, un mes puede verse mejor o peor de lo real.</p>
+  </div>
+
+</main>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/spend.js"></script>
+<script>const CARD_PAYMENT_MAP = {{ card_payment_map|tojson }};</script>
+<script src="/static/debit.js"></script>
+<script src="/static/cashflow.js"></script>
+<script>
+'use strict';
+
+let DEBIT_TXS = [];
+let cfChart = null;
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function money(n) {
+  const s = '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n < 0 && Math.abs(n) >= 0.005 ? '−' + s : s;
+}
+
+/* ── Period (same from→to convention as transactions.html) ── */
+let rangeFrom = null, rangeTo = null;
+
+function periodMonthsSet() {
+  if (rangeFrom == null && rangeTo == null) return null;
+  return new Set(cashFlowMonths(DEBIT_TXS).filter(m =>
+    (rangeFrom == null || m >= rangeFrom) && (rangeTo == null || m <= rangeTo)));
+}
+
+function setRange(from, to) {
+  rangeFrom = from || null;
+  rangeTo = to || null;
+  if (rangeFrom && rangeTo && rangeFrom > rangeTo) [rangeFrom, rangeTo] = [rangeTo, rangeFrom];
+  render();
+}
+
+function setRangePreset(n) {
+  const months = cashFlowMonths(DEBIT_TXS);
+  if (n == null || !months.length) setRange(null, null);
+  else setRange(months.slice(-n)[0], months[months.length - 1]);
+}
+
+function renderPeriodControls() {
+  const months = cashFlowMonths(DEBIT_TXS);
+  const choices = [...new Set([...months, rangeFrom, rangeTo].filter(Boolean))].sort();
+  const opts = (selected, emptyLabel) => `<option value="">${esc(emptyLabel)}</option>` +
+    choices.map(m => `<option value="${m}" ${m === selected ? 'selected' : ''}>${m}</option>`).join('');
+  document.getElementById('range-from').innerHTML = opts(rangeFrom, tr('Desde el inicio'));
+  document.getElementById('range-to').innerHTML = opts(rangeTo, tr('Hasta el final'));
+  const last = months[months.length - 1];
+  document.querySelectorAll('#range-presets .tab').forEach(b => {
+    const p = b.dataset.preset;
+    const on = p === 'all'
+      ? rangeFrom == null && rangeTo == null
+      : months.length >= +p && rangeFrom === months.slice(-p)[0] && rangeTo === last;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on);
+  });
+}
+
+/* ── Render ── */
+function render() {
+  renderPeriodControls();
+  const { rows, unmappedCount, unmappedTotal } = cashFlowByMonth(DEBIT_TXS, periodMonthsSet());
+
+  const warn = document.getElementById('unmapped-warning');
+  if (unmappedCount) {
+    warn.textContent = `⚠ ${unmappedCount} ${tr('pagos a tarjeta no reconocida — contados como egreso')} (${money(unmappedTotal)})`;
+    warn.style.display = '';
+  } else {
+    warn.style.display = 'none';
+  }
+
+  renderTable(rows);
+  renderChart(rows);
+}
+
+function signed(n) {
+  return `<span class="${n >= 0 ? 'pos' : 'neg'}">${money(n)}</span>`;
+}
+
+function renderTable(rows) {
+  const el = document.getElementById('cf-table');
+  if (!rows.length) {
+    el.innerHTML = `<p class="muted" style="font-size:13px">${esc(tr('Sin datos de cuenta de débito ni estados de cuenta.'))}</p>`;
+    return;
+  }
+  const exclTitle = tr('Pagos a tarjeta excluidos: ya contados en el gasto de tarjeta');
+  el.innerHTML = `<table>
+    <thead><tr>
+      <th>${esc(tr('Mes'))}</th>
+      <th>${esc(tr('Ingresos'))}</th>
+      <th>${esc(tr('Egresos débito'))}</th>
+      <th>${esc(tr('Gasto tarjetas'))}</th>
+      <th>${esc(tr('Egresos totales'))}</th>
+      <th>${esc(tr('Neto'))}</th>
+      <th>${esc(tr('Ahorro %'))}</th>
+    </tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td>${r.month}</td>
+      <td class="pos">${money(r.income)}</td>
+      <td>${money(r.debitOutflow)}${r.paymentsCount ? `<span class="excl" title="${esc(exclTitle)}">${esc(tr('excl.'))} ${money(r.paymentsExcluded)} · ${r.paymentsCount} ${esc(tr('pago(s)'))}</span>` : ''}</td>
+      <td>${money(r.cardSpend)}</td>
+      <td>${money(r.outflow)}</td>
+      <td>${signed(r.net)}</td>
+      <td>${r.savingsPct == null ? '<span class="muted">—</span>'
+        : `<span class="${r.savingsPct >= 0 ? 'pos' : 'neg'}">${r.savingsPct >= 0 ? '+' : '−'}${Math.abs(r.savingsPct).toFixed(1)}%</span>`}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderChart(rows) {
+  if (cfChart) { cfChart.destroy(); cfChart = null; }
+  const container = document.getElementById('cf-chart-container');
+  // Chart.js sizes against the container at creation — never build it hidden.
+  if (!rows.length || !container.offsetWidth) return;
+  const asc = rows.slice().reverse();
+  const labels = asc.map(r => `${monthNameFor(+r.month.slice(5, 7) - 1)} ${r.month.slice(2, 4)}`);
+  cfChart = new Chart(document.getElementById('cf-chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: tr('Ingresos'), data: asc.map(r => r.income), backgroundColor: '#2dd4a0', borderRadius: 3, maxBarThickness: 18 },
+        { label: tr('Egresos totales'), data: asc.map(r => r.outflow), backgroundColor: '#f75c5c', borderRadius: 3, maxBarThickness: 18 },
+        { label: tr('Neto'), data: asc.map(r => r.net), backgroundColor: '#4f7ef7', borderRadius: 3, maxBarThickness: 18 },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#8b93ab', font: { size: 11 }, boxWidth: 14, padding: 16 } },
+        tooltip: {
+          backgroundColor: '#141929', borderColor: '#1e2438', borderWidth: 1,
+          titleColor: '#8b93ab', bodyColor: '#dde2f0',
+          callbacks: { label: ctx => `  ${ctx.dataset.label}: ${money(ctx.raw)}` },
+        },
+        datalabels: { display: false },
+      },
+      scales: {
+        x: { ticks: { color: '#828aa8', font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { color: '#1e2438' } },
+        y: { ticks: { color: '#828aa8', font: { family: "'JetBrains Mono', monospace", size: 10 }, callback: v => money(v) }, grid: { color: '#1e2438' } },
+      },
+    },
+  });
+}
+
+/* ── Boot ── */
+async function boot() {
+  Chart.register(ChartDataLabels);
+  applyStaticAll();
+  onLangChange(() => render());
+  try {
+    const [categories, statements, account] = await Promise.all(
+      ['/api/categories', '/api/statements', '/api/debit-account'].map(async u => {
+        const r = await fetch(u);
+        if (!r.ok) throw new Error(u);
+        return r.json();
+      }));
+    loadSpend({ statements, categories });
+    DEBIT_TXS = account.transactions || [];
+    // Default to the months the debit ledger covers: outside it there is
+    // card spend but no income, so net and savings would read as a loss.
+    const debitMonths = DEBIT_TXS.map(t => (t.fecha || '').slice(0, 7)).filter(Boolean).sort();
+    if (debitMonths.length) setRange(debitMonths[0], debitMonths[debitMonths.length - 1]);
+    else render();
+  } catch (e) {
+    const warn = document.getElementById('unmapped-warning');
+    warn.textContent = tr('Error al cargar datos');
+    warn.style.display = '';
+  } finally {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 400);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

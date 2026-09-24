@@ -1,0 +1,248 @@
+{
+  "food": {
+    "label": "Comida",
+    "color": "#3987e5",
+    "keywords": [
+      "RESTAURANT",
+      "RESTAURANTE",
+      "PIZZA",
+      "BURGER",
+      "CAFE",
+      "COFFEE",
+      "STARBUCKS",
+      "MCDONALD",
+      "SUBWAY",
+      "DUNKIN"
+    ]
+  },
+  "groceries": {
+    "label": "Supermercado",
+    "color": "#199e70",
+    "keywords": [
+      "WALMART",
+      "SUPERMARKET",
+      "SUPERMERCADO",
+      "COSTCO",
+      "7-ELEVEN",
+      "MINI SUPER"
+    ]
+  },
+  "shopping": {
+    "label": "Compras",
+    "color": "#c98500",
+    "keywords": [
+      "IKEA",
+      "TARGET",
+      "DOLLAR STORE",
+      "GAMESTOP",
+      "NINTENDO",
+      "LEGO "
+    ]
+  },
+  "entertainment": {
+    "label": "Entretenimiento",
+    "color": "#008300",
+    "keywords": [
+      "CINEMA",
+      "CINEMARK",
+      "STEAMGAMES",
+      "STEAM PURCHASE",
+      "TICKET",
+      "THEATER",
+      "TEATRO"
+    ]
+  },
+  "services": {
+    "label": "Servicios y Suscripciones",
+    "color": "#9085e9",
+    "keywords": [
+      "SUBSCRIPTION",
+      "SUSCRIPCION",
+      "GOOGLE",
+      "MICROSOFT"
+    ]
+  },
+  "installments": {
+    "label": "Cuotas a Plazo",
+    "color": "#e66767",
+    "keywords": []
+  },
+  "health": {
+    "label": "Salud",
+    "color": "#d95926",
+    "keywords": [
+      "PHARMACY",
+      "FARMACIA",
+      "WALGREENS",
+      "DENTAL",
+      "CLINIC",
+      "CLINICA",
+      "OPTICA"
+    ]
+  },
+  "fuel": {
+    "label": "Combustible",
+    "color": "#2ba3b8",
+    "keywords": [
+      "SHELL",
+      "TEXACO",
+      "EXXON",
+      "GAS STATION",
+      "GASOLINERA"
+    ]
+  },
+  "pets": {
+    "label": "Mascotas",
+    "color": "#b3742f",
+    "keywords": [
+      "VETERINARIA",
+      "VETERINARY",
+      "PETSMART",
+      "PETCO"
+    ]
+  },
+  "travel": {
+    "label": "Viajes",
+    "color": "#c264a6",
+    "keywords": [
+      "HOTEL",
+      "HOSTAL",
+      "AIRBNB",
+      "AIRLINES",
+      "BOOKING.COM",
+      "EXPEDIA"
+    ]
+  },
+  "other": {
+    "label": "Otro",
+    "color": "#d55181",
+    "keywords": []
+  },
+  "transport": {
+    "label": "Transporte",
+    "color": "#5c6bc0",
+    "keywords": [
+      "UBER",
+      "LYFT",
+      "TAXI",
+      "PARKING"
+    ]
+  },
+  "fees": {
+    "label": "Seguros y Anualidad",
+    "color": "#607d8b",
+    "keywords": [
+      "ANUALIDAD",
+      "ANNUAL FEE"
+    ]
+  },
+  "vehicle": {
+    "label": "Vehículo",
+    "color": "#9e9d24",
+    "keywords": [
+      "CAR WASH",
+      "AUTO PARTS",
+      "TALLER"
+    ]
+  },
+  "refund": {
+    "label": "Reembolso",
+    "color": "#7cb342",
+    "keywords": [
+      "REEMBOLSO",
+      "REFUND",
+      "CASHBACK"
+    ]
+  },
+  "amazon": {
+    "label": "Amazon",
+    "color": "#ff9900",
+    "keywords": [
+      "AMAZON.COM",
+      "AMAZON MKTPL",
+      "AMAZON",
+      "AMZN"
+    ]
+  },
+  "streaming": {
+    "label": "Streaming",
+    "color": "#8e24aa",
+    "keywords": [
+      "NETFLIX",
+      "SPOTIFY",
+      "AMAZON PRIME",
+      "AMAZONPRIME",
+      "HBOMAX",
+      "DISNEYPLUS"
+    ]
+  },
+  "flowers": {
+    "label": "Flores",
+    "color": "#ec6a9c",
+    "keywords": [
+      "FLOWERS",
+      "FLORISTERIA",
+      "FLORIST"
+    ]
+  },
+  "clothing": {
+    "label": "Ropa",
+    "color": "#00897b",
+    "keywords": [
+      "ZARA",
+      "BERSHKA",
+      "H&M",
+      "UNIQLO",
+      "ROSS STORES",
+      "MARSHALLS"
+    ]
+  },
+  "museums": {
+    "label": "Museos",
+    "color": "#8d6e63",
+    "keywords": [
+      "MUSEUM",
+      "MUSEO"
+    ]
+  },
+  "tech": {
+    "label": "Tecnología",
+    "color": "#1e88e5",
+    "keywords": [
+      "BEST BUY",
+      "RADIOSHACK",
+      "APPLE STORE"
+    ]
+  },
+  "agua": {
+    "label": "Agua",
+    "color": "#4fc3f7",
+    "keywords": [
+      "WATER"
+    ]
+  },
+  "electricidad": {
+    "label": "Electricidad",
+    "color": "#fbc02d",
+    "keywords": [
+      "ELECTRIC"
+    ]
+  },
+  "internet_telefono": {
+    "label": "Internet y Teléfono",
+    "color": "#00bfa5",
+    "keywords": [
+      "INTERNET",
+      "TELECOM",
+      "WIRELESS"
+    ]
+  },
+  "seguros": {
+    "label": "Seguros",
+    "color": "#455a64",
+    "keywords": [
+      "SEGURO",
+      "INSURANCE"
+    ]
+  }
+}

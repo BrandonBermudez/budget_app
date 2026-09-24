@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cuenta de Débito · Presupuesto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <!-- Chart.js loaded synchronously so it is always ready before boot() -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #080b12;
+      --surface:   #0e1220;
+      --surface-2: #141929;
+      --border:    #1e2438;
+      --border-2:  #252c42;
+      --accent:    #4f7ef7;
+      --accent-btn:#3760d9;
+      --accent-dim:rgba(79,126,247,.12);
+      --green:     #2dd4a0;
+      --green-dim: rgba(45,212,160,.12);
+      --amber:     #f5a623;
+      --amber-dim: rgba(245,166,35,.12);
+      --red:       #f75c5c;
+      --red-dim:   rgba(247,92,92,.12);
+      --purple:    #a78bfa;
+      --purple-dim:rgba(167,139,250,.12);
+      --text:      #dde2f0;
+      --text-2:    #8b93ab;
+      --text-3:    #828aa8;
+      --radius-sm: 8px;
+      --radius:    14px;
+      --radius-lg: 20px;
+      --font:      'Inter', system-ui, sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+      --transition:.18s cubic-bezier(.4,0,.2,1);
+    }
+    html { font-size: 14px; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+
+    /* ── Layout ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .topbar-brand .icon { width: 28px; height: 28px; background: var(--accent-dim); border: 1px solid rgba(79,126,247,.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .nav-links { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+    .nav-btn { padding: 5px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all var(--transition); text-decoration: none; display: inline-flex; align-items: center; }
+    .nav-btn:hover { color: var(--text-2); }
+    .nav-btn.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .nav-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .main { padding: 28px 28px 60px; max-width: 1200px; margin: 0 auto; }
+
+    /* ── Section label ── */
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); margin: 32px 0 14px; display: flex; align-items: center; gap: 12px; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Card ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .card-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border-2); border-radius: var(--radius);
+      padding: 32px; text-align: center; cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
+    .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-zone.busy { opacity: .5; pointer-events: none; }
+    .upload-icon { font-size: 28px; margin-bottom: 10px; }
+    .upload-label { font-size: 13px; font-weight: 500; color: var(--text-2); }
+    .upload-sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+    .upload-kpi-line { font-size: 12px; color: var(--text-3); padding: 0 2px; }
+    .upload-kpi-line span { font-family: var(--mono); color: var(--text-2); font-weight: 600; }
+
+    .chart-container { position: relative; height: 260px; }
+    .code-chart-container { position: relative; }
+
+    .card-summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+    .utilities-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .utility-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+    .utility-tile-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+    .utility-tile-name { font-size: 12px; font-weight: 600; color: var(--text-2); }
+    .utility-tile-avg { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
+    .utility-tile-rows { max-height: 240px; overflow-y: auto; }
+    .insight-cat-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+    /* ── Insight tiles ── */
+    .insight-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .insight-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+    .insight-label { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+    .insight-val { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.1; }
+    .insight-val.small { font-size: 16px; }
+    .insight-val.pos { color: var(--green); }
+    .insight-val.neg { color: var(--red); }
+    .insight-sub { font-size: 11px; color: var(--text-3); margin-top: 5px; display: flex; align-items: center; gap: 6px; }
+
+    /* ── Same-day cluster / big-item rows (shared shape) ── */
+    .expense-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .expense-row:last-child { border-bottom: none; }
+    .expense-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+    .expense-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .expense-meta span { font-family: var(--mono); color: var(--text-2); font-weight: 600; }
+    .expense-amount { font-family: var(--mono); font-size: 14px; font-weight: 700; text-align: right; white-space: nowrap; }
+
+    .search-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px;
+      color: var(--text); font-family: var(--font); font-size: 13px; padding: 9px 12px; outline: none;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .cat-editor-select { background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; color: var(--text); font-family: var(--font); font-size: 12px; padding: 6px 8px; outline: none; cursor: pointer; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); border: none; font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity var(--transition); white-space: nowrap; text-decoration: none; }
+    .btn:hover { opacity: .82; }
+    .btn-primary { background: var(--accent-btn); color: #fff; }
+    .btn-ghost   { background: var(--border); color: var(--text-2); }
+    .btn-del { background: transparent; border: none; color: var(--text-3); cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 5px; transition: background var(--transition), color var(--transition); }
+    .btn-del:hover { background: var(--red-dim); color: var(--red); }
+
+    /* ── Uploads (cargas) list ── */
+    .upload-row {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-bottom: 8px;
+    }
+    .upload-row:last-child { margin-bottom: 0; }
+    .upload-row-meta { font-size: 12px; color: var(--text-3); }
+    .upload-row-meta span { font-family: var(--mono); color: var(--text-2); font-weight: 600; }
+
+    /* ── Transaction table (reused shape from statement_detail.html) ── */
+    .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-btn { padding: 5px 14px; border-radius: 99px; font-size: 11px; font-weight: 600; border: 1px solid var(--border-2); background: transparent; color: var(--text-3); cursor: pointer; transition: all var(--transition); font-family: var(--font); }
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active { background: var(--accent-btn); border-color: var(--accent-btn); color: #fff; }
+    .tx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .tx-table th { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border-2); }
+    .tx-table th.right { text-align: right; }
+    .tx-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .tx-table tr:last-child td { border-bottom: none; }
+    .tx-table tr:hover td { background: var(--surface-2); }
+    .tx-table .tx-amount { font-family: var(--mono); font-weight: 700; text-align: right; white-space: nowrap; }
+    .tx-table .tx-amount.debito  { color: var(--red); }
+    .tx-table .tx-amount.credito { color: var(--green); }
+    .tx-table .tx-desc { max-width: 280px; overflow-wrap: anywhere; }
+    .chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; background: var(--accent-dim); color: var(--accent); }
+
+    /* .lang-toggle uses this class but no page defines it — index.html
+       inlines its own styles instead; adding the definition here (rather
+       than relying on browser default button chrome, as transactions.html
+       currently does) so the toggle actually looks like the rest of the UI. */
+    .icon-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-2); background: transparent; color: var(--text-2); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; transition: background var(--transition), color var(--transition), border-color var(--transition); }
+    .icon-btn:hover { background: var(--accent-dim); border-color: rgba(79,126,247,.4); color: var(--accent); }
+
+    /* ── Empty state ── */
+    .empty { padding: 48px 0; text-align: center; color: var(--text-3); }
+    .empty-icon { font-size: 32px; margin-bottom: 10px; }
+    .empty-text { font-size: 13px; }
+
+    /* ── Loading overlay ── */
+    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 14px; transition: opacity .3s; }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 28px; right: 28px; z-index: 1000; display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .25s, transform .25s; }
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    .toast.error { border-color: var(--red); }
+
+    /* ── Modals ── */
+    .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; }
+    .backdrop.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius-lg); padding: 28px; width: 440px; max-width: 95vw; max-height: 88vh; overflow-y: auto; animation: modal-in .22s cubic-bezier(.4,0,.2,1); }
+    .modal.wide { width: 620px; }
+    @keyframes modal-in { from { opacity:0; transform:translateY(12px) scale(.97); } to { opacity:1; transform:none; } }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+    .parse-result { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-top: 4px; }
+    .parse-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+    .parse-row:last-child { border-bottom: none; }
+    .parse-label { color: var(--text-3); }
+    .parse-val   { font-family: var(--mono); font-weight: 600; }
+
+    @media (max-width: 900px) {
+      .insight-grid { grid-template-columns: 1fr 1fr; }
+      .card-summary-row { grid-template-columns: 1fr; }
+      .utilities-grid { grid-template-columns: 1fr; }
+      .main { padding: 16px 14px 60px; }
+      .topbar { padding: 0 14px; }
+      .tx-table .tx-ref { display: none; }
+    }
+    /* Nav on its own row below 960px (5 nav items + upload button + toggle). */
+    @media (max-width: 960px) {
+      .topbar { flex-wrap: wrap; row-gap: 8px; height: auto; padding: 10px 14px; }
+      .nav-links { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+    }
+    @media (max-width: 560px) {
+      .insight-grid { grid-template-columns: 1fr; }
+      .tx-table .chip { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos…</div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="icon">🏦</div>
+    <span data-i18n="Cuenta de Débito">Cuenta de Débito</span>
+  </div>
+  <nav class="nav-links">
+    <a class="nav-btn" href="/" data-i18n="Presupuesto">Presupuesto</a>
+    <a class="nav-btn" href="/transactions" data-i18n="Transacciones">Transacciones</a>
+    <a class="nav-btn active" href="/debit-account" data-i18n="🏦 Cuenta de Débito">🏦 Cuenta de Débito</a>
+    <a class="nav-btn" href="/cash-flow">📊 <span data-i18n="Análisis">Análisis</span></a>
+  </nav>
+  <button class="btn btn-ghost" style="margin-left:12px" onclick="openUploadModal()" data-i18n="📄 Cargar CSV">📄 Cargar CSV</button>
+  <button class="icon-btn lang-toggle" onclick="toggleLang()" style="margin-left:8px" aria-label="Switch language">EN</button>
+</header>
+
+<!-- Upload modal — the CSV export ("Transacciones del mes") is uploaded here,
+     same modal-behind-a-topbar-trigger pattern as the credit-card page. Only
+     one import path exists (no email fetch for this format), so no <details>
+     wrapper is needed — the upload zone is the whole modal body. -->
+<div class="backdrop" id="upload-backdrop" onclick="if (event.target === this) closeUploadModal()" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
+  <div class="modal">
+    <div class="modal-title" id="upload-modal-title" data-i18n="Cargar CSV de Cuenta de Débito">Cargar CSV de Cuenta de Débito</div>
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept=".csv" onchange="handleFileSelect(this.files[0])" />
+      <div class="upload-icon">📄</div>
+      <div class="upload-label" data-i18n="Arrastra el CSV exportado por el banco aquí o haz clic para seleccionar">Arrastra el CSV exportado por el banco aquí o haz clic para seleccionar</div>
+      <div class="upload-sub" data-i18n="Formato: 'Transacciones del mes' — puede incluir varios meses, las duplicadas se ignoran automáticamente">Formato: "Transacciones del mes" — puede incluir varios meses, las duplicadas se ignoran automáticamente</div>
+    </div>
+
+    <div id="uploads-list-wrap" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:10px" data-i18n="Cargas anteriores">Cargas anteriores</div>
+      <div id="uploads-list"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeUploadModal()" data-i18n="Cerrar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+
+  <div class="upload-kpi-line">
+    <span id="kpi-txs">—</span> <span data-i18n="transacción(es)">transacción(es)</span> · <span id="kpi-range">—</span> · <span id="kpi-uploads">—</span> <span data-i18n="carga(s)">carga(s)</span>
+  </div>
+
+  <div class="card" id="search-card" style="padding:16px 22px;margin-top:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span aria-hidden="true">🔍</span>
+      <input type="text" id="search-input" class="search-input"
+             placeholder="Buscar por descripción o referencia…"
+             data-i18n-placeholder="Buscar por descripción o referencia…"
+             oninput="onSearchInput(this.value)" aria-label="Buscar transacciones">
+    </div>
+    <div id="search-results" style="display:none;margin-top:14px"></div>
+  </div>
+
+  <div class="section-label">
+    <span data-i18n="Resumen del Período">Resumen del Período</span>
+    <select class="cat-editor-select" id="insights-period-select" onchange="setInsightsPeriod(this.value)"
+            style="text-transform:none;letter-spacing:normal;font-weight:400;font-size:11px">
+      <option value="all" data-i18n="Todo el período">Todo el período</option>
+      <option value="3" data-i18n="Últimos 3 meses">Últimos 3 meses</option>
+      <option value="6" data-i18n="Últimos 6 meses">Últimos 6 meses</option>
+      <option value="12" data-i18n="Últimos 12 meses">Últimos 12 meses</option>
+    </select>
+  </div>
+  <div class="insight-grid" id="insight-grid">
+    <div class="empty" style="grid-column:1/-1;padding:32px 0"><div class="empty-icon">🏦</div><div class="empty-text" data-i18n="Sin transacciones cargadas aún.">Sin transacciones cargadas aún.</div></div>
+  </div>
+
+  <div class="section-label" data-i18n="Tendencia del Saldo">Tendencia del Saldo</div>
+  <div class="card" id="trend-card">
+    <div class="card-header">
+      <span class="card-title" data-i18n="Saldo de la Cuenta">Saldo de la Cuenta</span>
+      <span style="font-size:11px;color:var(--text-3)" data-i18n="Puntos ámbar = días con actividad múltiple">Puntos ámbar = días con actividad múltiple</span>
+    </div>
+    <div id="trend-body">
+      <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin transacciones para graficar aún.">Sin transacciones para graficar aún.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label" data-i18n="Días con Actividad Múltiple">Días con Actividad Múltiple</div>
+  <div class="card" id="clusters-card">
+    <div class="card-header">
+      <span class="card-title" data-i18n="3 o más transacciones el mismo día">3 o más transacciones el mismo día</span>
+      <span style="font-size:11px;color:var(--text-3)" data-i18n="Útil para detectar actividad inusual">Útil para detectar actividad inusual</span>
+    </div>
+    <div id="clusters-body">
+      <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin datos suficientes aún.">Sin datos suficientes aún.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label" data-i18n="Desglose por Tipo de Transacción">Desglose por Tipo de Transacción</div>
+  <div class="card" id="codes-card">
+    <div class="card-header">
+      <span class="card-title" data-i18n="Débitos y Créditos por Código">Débitos y Créditos por Código</span>
+      <span style="font-size:11px;color:var(--text-3)" data-i18n="Código asignado por el banco">Código asignado por el banco</span>
+    </div>
+    <div id="codes-body">
+      <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin transacciones aún.">Sin transacciones aún.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label" data-i18n="Pagos a Tarjetas de Crédito">Pagos a Tarjetas de Crédito</div>
+  <div class="card" id="card-payments-card">
+    <div class="card-header">
+      <span class="card-title" data-i18n="Tendencia Mensual por Tarjeta">Tendencia Mensual por Tarjeta</span>
+      <span style="font-size:11px;color:var(--text-3)" data-i18n="Identificadas por el número de tarjeta en la descripción">Identificadas por el número de tarjeta en la descripción</span>
+    </div>
+    <div id="card-payments-body">
+      <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin pagos a tarjetas aún.">Sin pagos a tarjetas aún.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label" data-i18n="Transferencias">Transferencias</div>
+  <div class="card-summary-row">
+    <div class="card" id="transfers-in-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Recibidas (TEF DE)">Recibidas (TEF DE)</span>
+      </div>
+      <div id="transfers-in-body">
+        <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin transferencias recibidas aún.">Sin transferencias recibidas aún.</div></div>
+      </div>
+    </div>
+    <div class="card" id="transfers-out-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Enviadas (TEF A)">Enviadas (TEF A)</span>
+      </div>
+      <div id="transfers-out-body">
+        <div class="empty" style="padding:20px 0"><div class="empty-text" data-i18n="Sin transferencias enviadas aún.">Sin transferencias enviadas aún.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" data-i18n="Intereses">Intereses</div>
+  <div class="insight-grid" id="interest-grid">
+    <div class="empty" style="grid-column:1/-1;padding:32px 0"><div class="empty-text" data-i18n="Sin datos de intereses aún.">Sin datos de intereses aún.</div></div>
+  </div>
+
+  <div class="section-label" data-i18n="Todas las Transacciones">Todas las Transacciones</div>
+  <div class="card" id="all-tx-card">
+    <div class="filter-bar" id="tx-filter-bar" role="tablist">
+      <button class="filter-btn active" data-filter="todas"    onclick="setTxFilter('todas')"    data-i18n="Todas">Todas</button>
+      <button class="filter-btn"        data-filter="debitos"  onclick="setTxFilter('debitos')"  data-i18n="Débitos">Débitos</button>
+      <button class="filter-btn"        data-filter="creditos" onclick="setTxFilter('creditos')" data-i18n="Créditos">Créditos</button>
+    </div>
+    <div id="all-tx-body" style="overflow-x:auto;max-height:520px;overflow-y:auto">
+      <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin transacciones aún.">Sin transacciones aún.</div></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Upload preview / confirm modal -->
+<div class="backdrop" id="preview-backdrop" onclick="if (event.target === this) cancelUpload()" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+  <div class="modal">
+    <div class="modal-title" id="preview-title" data-i18n="Vista previa del archivo">Vista previa del archivo</div>
+    <div id="preview-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cancelUpload()" data-i18n="Cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="confirm-upload-btn" onclick="confirmUpload()" data-i18n="Guardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Day detail — clicking a same-day-cluster row opens this with every
+     transaction from that date. -->
+<div class="backdrop" id="day-detail-backdrop" onclick="if (event.target === this) closeDayDetail()" role="dialog" aria-modal="true" aria-labelledby="day-detail-title">
+  <div class="modal wide">
+    <div class="modal-title" id="day-detail-title" data-i18n="Detalle del Día">Detalle del Día</div>
+    <div id="day-detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeDayDetail()" data-i18n="Cerrar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-icon">✓</span>&nbsp;<span id="toast-msg"></span></div>
+
+<script src="/static/i18n.js"></script>
+<script>const CARD_PAYMENT_MAP = {{ card_payment_map|tojson }};</script>
+<script src="/static/debit.js"></script>
+<script>
+'use strict';
+
+Chart.register(ChartDataLabels);
+
+/* ── State ── */
+let ACCOUNT = { numero_cliente: '', cuenta: '', nombre: '', moneda: '', transactions: [], uploads: [] };
+let CSRF_TOKEN = null;
+let pendingUpload = null;
+let insightsPeriod = 'all';
+let txFilter = 'todas';
+let trendChartInst = null;
+let codesChartInst = null;
+let cardPaymentsChartInst = null;
+
+// The bank's own transaction-code vocabulary — mirrors debit_parser.py's
+// CODE_LABELS. Static/hardcoded, not user-editable (unlike merchant
+// categories), since these codes are assigned by the bank, not derived
+// from a description keyword.
+const CODE_LABELS = {
+  'AR': 'Depósito ATM',
+  'AT': 'Retiro ATM',
+  'CM': 'Comisión',
+  'DP': 'Depósito',
+  'TF': 'Transferencia/Pago',
+  'TS': 'Transacción',
+  '59': 'Comisión',
+  '3O': 'Intereses',
+  '3Q': 'Retención de Impuesto',
+};
+function codeLabel(codigo) {
+  const base = CODE_LABELS[codigo] || codigo;
+  return `${codigo} · ${tr(base)}`;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function money(n, prefix='$') {
+  if (n === 0 || n == null) return '—';
+  return prefix + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* ── Boot ── */
+async function boot() {
+  applyStaticAll();
+  onLangChange(() => render());
+  try {
+    const tokRes = await fetch('/api/csrf-token');
+    CSRF_TOKEN = (await tokRes.json()).csrf_token;
+
+    const res = await fetch('/api/debit-account');
+    ACCOUNT = await res.json();
+
+    render();
+  } catch(e) {
+    toast('⚠', tr('Error al cargar datos'), true);
+  } finally {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 400);
+  }
+}
+
+/* ── Shared period-filter helper — same pattern as transactions.html's
+   insightsPeriodMonthsSet(), but derived from transaction dates directly
+   since this is one continuous ledger, not per-statement cycles. ── */
+function allMonths() {
+  const set = new Set();
+  ACCOUNT.transactions.forEach(t => { if (t.fecha) set.add(t.fecha.slice(0, 7)); });
+  return [...set].sort();
+}
+
+function insightsPeriodMonthsSet() {
+  if (insightsPeriod === 'all') return null;
+  return new Set(allMonths().slice(-parseInt(insightsPeriod, 10)));
+}
+
+function setInsightsPeriod(period) {
+  insightsPeriod = period;
+  renderInsights();
+}
+
+function filterTxs(monthsFilter) {
+  if (!monthsFilter) return ACCOUNT.transactions;
+  return ACCOUNT.transactions.filter(t => monthsFilter.has(t.fecha.slice(0, 7)));
+}
+
+/* ── Render orchestration ── */
+function render() {
+  renderKPIs();
+  renderUploadsList();
+  renderInsights();
+  renderBalanceTrend();
+  renderDayClusters();
+  renderCodeBreakdown();
+  renderCardPayments();
+  renderTransfers();
+  renderInterest();
+  renderTxTable();
+}
+
+function renderKPIs() {
+  const txs = ACCOUNT.transactions;
+  document.getElementById('kpi-txs').textContent = txs.length || '—';
+  document.getElementById('kpi-uploads').textContent = (ACCOUNT.uploads || []).length || '—';
+  if (txs.length) {
+    const dates = txs.map(t => t.fecha).sort();
+    document.getElementById('kpi-range').textContent = `${dates[0]} → ${dates[dates.length - 1]}`;
+  } else {
+    document.getElementById('kpi-range').textContent = '—';
+  }
+}
+
+/* ── Resumen del Período ── */
+function renderInsights() {
+  const grid = document.getElementById('insight-grid');
+  const monthsFilter = insightsPeriodMonthsSet();
+  const txs = filterTxs(monthsFilter);
+
+  if (!txs.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;padding:32px 0"><div class="empty-icon">🏦</div><div class="empty-text">${tr('Sin transacciones cargadas aún.')}</div></div>`;
+    return;
+  }
+
+  const totalDebito  = txs.reduce((s, t) => s + t.debito, 0);
+  const totalCredito = txs.reduce((s, t) => s + t.credito, 0);
+  const neto = totalCredito - totalDebito;
+  const debitoCount  = txs.filter(t => t.debito > 0).length;
+  const creditoCount = txs.filter(t => t.credito > 0).length;
+
+  const months = monthsFilter ? [...monthsFilter] : allMonths();
+  const monthlyAvgDebito = months.length ? totalDebito / months.length : 0;
+
+  const maxDebito  = txs.reduce((best, t) => t.debito  > (best?.debito  || 0) ? t : best, null);
+  const maxCredito = txs.reduce((best, t) => t.credito > (best?.credito || 0) ? t : best, null);
+
+  const saldoActual = ACCOUNT.transactions.length
+    ? ACCOUNT.transactions[ACCOUNT.transactions.length - 1].balance
+    : 0;
+
+  const tiles = [
+    { label: tr('Total Débitos'), val: money(totalDebito), sub: `${debitoCount} ${tr('transacción(es)')}` },
+    { label: tr('Total Créditos'), val: money(totalCredito), sub: `${creditoCount} ${tr('transacción(es)')}` },
+    { label: tr('Neto del Período'), val: (neto >= 0 ? '+' : '−') + money(neto), cls: neto >= 0 ? 'pos' : 'neg',
+      sub: `${tr('Saldo actual:')} ${money(saldoActual)}` },
+    { label: tr('Promedio Mensual (Débito)'), val: money(monthlyAvgDebito), sub: `${months.length} ${tr('mes(es)')}` },
+    { label: tr('Mayor Débito'), val: maxDebito ? money(maxDebito.debito) : '—', small: true,
+      sub: maxDebito ? `${esc(maxDebito.descripcion)} · ${maxDebito.fecha}` : '' },
+    { label: tr('Mayor Crédito'), val: maxCredito ? money(maxCredito.credito) : '—', small: true,
+      sub: maxCredito ? `${esc(maxCredito.descripcion)} · ${maxCredito.fecha}` : '' },
+  ];
+
+  grid.innerHTML = tiles.map(t => `
+    <div class="insight-tile">
+      <div class="insight-label">${t.label}</div>
+      <div class="insight-val ${t.small ? 'small' : ''} ${t.cls || ''}">${t.val}</div>
+      <div class="insight-sub">${t.sub || ''}</div>
+    </div>`).join('');
+}
+
+/* ── Same-day clusters — computed once, shared by the trend chart's marker
+   dots and the cluster list below it. ── */
+function computeDayClusters() {
+  const byDate = {};
+  ACCOUNT.transactions.forEach(t => {
+    (byDate[t.fecha] = byDate[t.fecha] || []).push(t);
+  });
+  return Object.entries(byDate)
+    .filter(([, txs]) => txs.length >= 3)
+    .map(([fecha, txs]) => {
+      const debito  = txs.reduce((s, t) => s + t.debito, 0);
+      const credito = txs.reduce((s, t) => s + t.credito, 0);
+      return { fecha, txs, count: txs.length, debito, credito, neto: credito - debito };
+    })
+    .sort((a, b) => b.count - a.count || Math.abs(b.neto) - Math.abs(a.neto));
+}
+
+const CLUSTER_LIMIT = 15;
+
+function renderDayClusters() {
+  const body = document.getElementById('clusters-body');
+  const clusters = computeDayClusters();
+
+  if (!clusters.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin días con 3 o más transacciones aún.')}</div></div>`;
+    return;
+  }
+
+  const shown = clusters.slice(0, CLUSTER_LIMIT);
+  const rows = shown.map(c => `
+    <div class="expense-row" onclick="openDayDetail('${c.fecha}')">
+      <div>
+        <div class="expense-name">${c.fecha}</div>
+        <div class="expense-meta">${c.count} ${tr('transacciones')} · <span>${money(c.debito)}</span> ${tr('en débitos')}, <span>${money(c.credito)}</span> ${tr('en créditos')}</div>
+      </div>
+      <div class="expense-amount" style="color:${c.neto >= 0 ? 'var(--green)' : 'var(--red)'}">${c.neto >= 0 ? '+' : '−'}${money(c.neto)}</div>
+    </div>`).join('');
+
+  const note = clusters.length > CLUSTER_LIMIT
+    ? `<div style="font-size:11px;color:var(--text-3);margin-top:12px">${tr('Mostrando')} ${CLUSTER_LIMIT} ${tr('de')} ${clusters.length}</div>`
+    : '';
+
+  body.innerHTML = rows + note;
+}
+
+function openDayDetail(fecha) {
+  const clusters = computeDayClusters();
+  const c = clusters.find(x => x.fecha === fecha);
+  if (!c) return;
+
+  document.getElementById('day-detail-title').textContent = `${tr('Detalle del Día')} · ${fecha}`;
+
+  const rows = c.txs.map(t => `
+    <tr>
+      <td class="tx-ref" style="font-family:var(--mono);color:var(--text-3)">${esc(t.referencia)}</td>
+      <td><span class="chip">${esc(t.codigo)}</span></td>
+      <td class="tx-desc">${esc(t.descripcion)}</td>
+      <td class="tx-amount debito">${t.debito ? money(t.debito) : ''}</td>
+      <td class="tx-amount credito">${t.credito ? money(t.credito) : ''}</td>
+    </tr>`).join('');
+
+  document.getElementById('day-detail-body').innerHTML = `
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:14px">
+      ${c.count} ${tr('transacciones')} · <strong style="color:var(--text)">${c.neto >= 0 ? '+' : '−'}${money(c.neto)}</strong> ${tr('neto')}
+    </div>
+    <div style="max-height:50vh;overflow-y:auto;overflow-x:auto">
+      <table class="tx-table">
+        <thead><tr>
+          <th class="tx-ref" data-i18n="Referencia">Referencia</th>
+          <th data-i18n="Código">Código</th>
+          <th data-i18n="Descripción">Descripción</th>
+          <th class="right" data-i18n="Débito">Débito</th>
+          <th class="right" data-i18n="Crédito">Crédito</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('day-detail-backdrop').classList.add('open');
+  setTimeout(() => document.querySelector('#day-detail-backdrop .btn-primary')?.focus(), 50);
+}
+
+function closeDayDetail() {
+  document.getElementById('day-detail-backdrop').classList.remove('open');
+}
+
+/* ── Tendencia del Saldo — one continuous line, same precedent as
+   index.html's "Capital" net-worth chart. Cluster days get an amber marker
+   dot cross-referencing the list above; every other point is invisible
+   (radius 0) so the line itself stays the focus. ── */
+function renderBalanceTrend() {
+  const wrap = document.getElementById('trend-body');
+  const txs = ACCOUNT.transactions;
+
+  if (!txs.length) {
+    wrap.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin transacciones para graficar aún.')}</div></div>`;
+    if (trendChartInst) { trendChartInst.destroy(); trendChartInst = null; }
+    return;
+  }
+
+  wrap.innerHTML = `<div class="chart-container"><canvas id="trend-chart"></canvas></div>`;
+  if (trendChartInst) trendChartInst.destroy();
+
+  const clusterDates = new Set(computeDayClusters().map(c => c.fecha));
+  const dense = txs.length > 80;
+
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  trendChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: txs.map(t => t.fecha),
+      datasets: [{
+        label: tr('Saldo'),
+        data: txs.map(t => t.balance),
+        borderColor: '#4f7ef7',
+        backgroundColor: 'rgba(79,126,247,.08)',
+        fill: true,
+        tension: 0.25,
+        borderWidth: 2,
+        pointBackgroundColor: txs.map(t => clusterDates.has(t.fecha) ? '#f5a623' : '#4f7ef7'),
+        pointBorderColor: txs.map(t => clusterDates.has(t.fecha) ? '#f5a623' : 'transparent'),
+        pointRadius: txs.map(t => clusterDates.has(t.fecha) ? 6 : (dense ? 0 : 2)),
+        pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        // ChartDataLabels is registered globally (shared with the code-
+        // breakdown bar chart below, which wants it) — without an explicit
+        // off switch here it stamps a number on all 232 points, an
+        // unreadable wall of overlapping text. Balance values are already
+        // available on hover via the tooltip below.
+        datalabels: { display: false },
+        tooltip: {
+          backgroundColor: '#141929', borderColor: '#1e2438', borderWidth: 1,
+          titleColor: '#8b93ab', bodyColor: '#dde2f0',
+          callbacks: {
+            label: ctx => {
+              const t = txs[ctx.dataIndex];
+              const lines = [`  ${tr('Saldo')}: ${money(t.balance)}`];
+              if (t.debito)  lines.push(`  ${tr('Débito')}: ${money(t.debito)} — ${t.descripcion}`);
+              if (t.credito) lines.push(`  ${tr('Crédito')}: ${money(t.credito)} — ${t.descripcion}`);
+              if (clusterDates.has(t.fecha)) lines.push(`  ⚠ ${tr('Día con actividad múltiple')}`);
+              return lines;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#4a5168', font: { family: "'JetBrains Mono', monospace", size: 10 }, maxTicksLimit: 12 },
+          grid: { color: '#1e2438' }
+        },
+        y: {
+          ticks: { color: '#4a5168', callback: v => '$' + v.toLocaleString('en-US'), font: { size: 11 } },
+          grid: { color: '#1e2438' }
+        }
+      }
+    }
+  });
+}
+
+/* ── Desglose por Tipo de Transacción — horizontal stacked bar, red=débito /
+   green=crédito. Most bank codes are single-direction (AR/DP/3O always
+   credit; AT/CM/59/3Q always debit), but TF and TS are genuinely mixed
+   (e.g. "PAGO..." debits vs "TEF DE:..." credits both code TF) — a stacked
+   two-hue bar represents that correctly, a 9-way categorical palette
+   wouldn't (see the design review this page was built from). ── */
+function renderCodeBreakdown() {
+  const body = document.getElementById('codes-body');
+  const txs = ACCOUNT.transactions;
+
+  if (!txs.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin transacciones aún.')}</div></div>`;
+    if (codesChartInst) { codesChartInst.destroy(); codesChartInst = null; }
+    return;
+  }
+
+  const agg = {};
+  txs.forEach(t => {
+    const a = agg[t.codigo] = agg[t.codigo] || { debito: 0, credito: 0, debitoCount: 0, creditoCount: 0 };
+    if (t.debito)  { a.debito  += t.debito;  a.debitoCount++; }
+    if (t.credito) { a.credito += t.credito; a.creditoCount++; }
+  });
+  const rows = Object.entries(agg).sort((a, b) => (b[1].debito + b[1].credito) - (a[1].debito + a[1].credito));
+
+  body.innerHTML = `<div class="code-chart-container" style="height:${rows.length * 44 + 40}px"><canvas id="codes-chart"></canvas></div>`;
+  if (codesChartInst) codesChartInst.destroy();
+
+  const ctx = document.getElementById('codes-chart').getContext('2d');
+  codesChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(([codigo]) => codeLabel(codigo)),
+      datasets: [
+        { label: tr('Débitos'),  data: rows.map(([, v]) => v.debito),  backgroundColor: '#f75c5c', borderRadius: 4, maxBarThickness: 18 },
+        { label: tr('Créditos'), data: rows.map(([, v]) => v.credito), backgroundColor: '#2dd4a0', borderRadius: 4, maxBarThickness: 18 },
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { right: 56 } },
+      scales: {
+        x: { stacked: true, beginAtZero: true, ticks: { color: '#4a5168', font: { size: 10 }, callback: v => '$' + v.toLocaleString('en-US') }, grid: { color: '#1e2438' } },
+        y: { stacked: true, ticks: { color: '#8b93ab', font: { size: 12 } }, grid: { display: false } }
+      },
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end', labels: { color: '#8b93ab', font: { size: 11 }, boxWidth: 12, padding: 12 } },
+        // Values here span several orders of magnitude across the stacked bars — a
+        // per-segment label collides with the axis text on every small
+        // segment (and Chart.js's default formatter prints raw floats like
+        // 12.340000000000001 with no currency formatting). The tooltip
+        // below already gives exact amount + count on hover, and bar length
+        // is what this chart's actually for (relative magnitude), so the
+        // fix is turning labels off here rather than fighting the collision.
+        datalabels: { display: false },
+        tooltip: {
+          backgroundColor: '#141929', borderColor: '#1e2438', borderWidth: 1,
+          titleColor: '#8b93ab', bodyColor: '#dde2f0',
+          callbacks: {
+            label: ctx => {
+              const [codigo] = rows[ctx.dataIndex];
+              const v = agg[codigo];
+              const count = ctx.datasetIndex === 0 ? v.debitoCount : v.creditoCount;
+              return `  ${ctx.dataset.label}: ${money(ctx.raw)} (${count})`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderCardPayments() {
+  const body = document.getElementById('card-payments-body');
+  const matched = ACCOUNT.transactions
+    .map(t => ({ t, card: matchCardPayment(t) }))
+    .filter(x => x.card);
+
+  if (!matched.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin pagos a tarjetas aún.')}</div></div>`;
+    if (cardPaymentsChartInst) { cardPaymentsChartInst.destroy(); cardPaymentsChartInst = null; }
+    return;
+  }
+
+  const months = [...new Set(matched.map(x => x.t.fecha.slice(0, 7)))].sort();
+  const byCard = {};  // cardKey -> { label, color, byMonth: {month: total}, total }
+  matched.forEach(({ t, card }) => {
+    const c = byCard[card.key] = byCard[card.key] || { label: card.label, color: card.color, byMonth: {}, total: 0 };
+    const m = t.fecha.slice(0, 7);
+    c.byMonth[m] = (c.byMonth[m] || 0) + t.debito;
+    c.total += t.debito;
+  });
+
+  const grandTotal = Object.values(byCard).reduce((s, c) => s + c.total, 0);
+
+  const totalsRow = Object.values(byCard).sort((a, b) => b.total - a.total).map(c => `
+    <div class="expense-row" style="cursor:default">
+      <div class="expense-name"><span class="insight-cat-dot" style="background:${esc(c.color)}"></span>${esc(c.label)}</div>
+      <div class="expense-amount">${money(c.total)}</div>
+    </div>`).join('');
+  const totalRow = `
+    <div class="expense-row" style="cursor:default;border-top:1px solid var(--border-2);margin-top:4px;padding-top:14px;border-bottom:none">
+      <div class="expense-name" style="font-weight:700">${tr('Total')}</div>
+      <div class="expense-amount" style="font-size:15px">${money(grandTotal)}</div>
+    </div>`;
+
+  body.innerHTML = `
+    <div class="chart-container"><canvas id="card-payments-chart"></canvas></div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">${totalsRow}${totalRow}</div>`;
+
+  if (cardPaymentsChartInst) cardPaymentsChartInst.destroy();
+  const ctx = document.getElementById('card-payments-chart').getContext('2d');
+  cardPaymentsChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        ...Object.values(byCard).map(c => ({
+          label: c.label,
+          data: months.map(m => c.byMonth[m] || 0),
+          borderColor: c.color,
+          backgroundColor: c.color,
+          tension: 0.25,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+        })),
+        {
+          label: tr('Total'),
+          data: months.map(m => Object.values(byCard).reduce((s, c) => s + (c.byMonth[m] || 0), 0)),
+          borderColor: '#8b93ab',
+          borderDash: [6, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end', labels: { color: '#8b93ab', font: { size: 11 }, boxWidth: 12, padding: 12 } },
+        datalabels: { display: false },
+        tooltip: {
+          backgroundColor: '#141929', borderColor: '#1e2438', borderWidth: 1,
+          titleColor: '#8b93ab', bodyColor: '#dde2f0',
+          callbacks: { label: ctx => `  ${ctx.dataset.label}: ${money(ctx.raw)}` }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#4a5168', font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { color: '#1e2438' } },
+        y: { beginAtZero: true, ticks: { color: '#4a5168', callback: v => '$' + v.toLocaleString('en-US'), font: { size: 11 } }, grid: { color: '#1e2438' } }
+      }
+    }
+  });
+}
+
+/* ── Transferencias — TEF DE (received, credit) grouped by sender name;
+   TEF A (sent, debit) grouped by destination account number. ── */
+function renderTransfers() {
+  const inBody  = document.getElementById('transfers-in-body');
+  const outBody = document.getElementById('transfers-out-body');
+
+  const received = {};  // name -> {total, count}
+  const sent = {};      // account -> {total, count}
+  ACCOUNT.transactions.forEach(t => {
+    const de = t.descripcion.match(/^TEF DE:\s*(.+)/i);
+    if (de) {
+      const name = de[1].trim();
+      const r = received[name] = received[name] || { total: 0, count: 0 };
+      r.total += t.credito; r.count++;
+      return;
+    }
+    const a = t.descripcion.match(/^TEF A\s*:\s*(.+)/i);
+    if (a) {
+      const acct = a[1].trim();
+      const s = sent[acct] = sent[acct] || { total: 0, count: 0 };
+      s.total += t.debito; s.count++;
+    }
+  });
+
+  const renderList = (map, emptyMsg) => {
+    const entries = Object.entries(map).sort((a, b) => b[1].total - a[1].total);
+    if (!entries.length) return `<div class="empty" style="padding:20px 0"><div class="empty-text">${tr(emptyMsg)}</div></div>`;
+    return entries.map(([who, v]) => `
+      <div class="expense-row" style="cursor:default">
+        <div>
+          <div class="expense-name">${esc(who)}</div>
+          <div class="expense-meta"><span>${v.count}</span> ${tr('transferencia(s)')}</div>
+        </div>
+        <div class="expense-amount">${money(v.total)}</div>
+      </div>`).join('');
+  };
+
+  inBody.innerHTML  = renderList(received, 'Sin transferencias recibidas aún.');
+  outBody.innerHTML = renderList(sent, 'Sin transferencias enviadas aún.');
+}
+
+/* ── Intereses — 3O (Intereses, earned) vs 3Q (Retención de Impuesto,
+   withheld). Same two codes already shown in the code-breakdown chart,
+   but this is a direct, dedicated summary of them. ── */
+function renderInterest() {
+  const grid = document.getElementById('interest-grid');
+  const ganado = ACCOUNT.transactions.filter(t => t.codigo === '3O').reduce((s, t) => s + t.credito, 0);
+  const retenido = ACCOUNT.transactions.filter(t => t.codigo === '3Q').reduce((s, t) => s + t.debito, 0);
+  const neto = ganado - retenido;
+
+  if (!ganado && !retenido) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;padding:32px 0"><div class="empty-text">${tr('Sin datos de intereses aún.')}</div></div>`;
+    return;
+  }
+
+  const tiles = [
+    { label: tr('Interés Ganado'), val: money(ganado), cls: 'pos' },
+    { label: tr('Retención de Impuesto'), val: money(retenido), cls: 'neg' },
+    { label: tr('Neto'), val: (neto >= 0 ? '+' : '−') + money(neto), cls: neto >= 0 ? 'pos' : 'neg' },
+  ];
+  grid.innerHTML = tiles.map(t => `
+    <div class="insight-tile">
+      <div class="insight-label">${t.label}</div>
+      <div class="insight-val ${t.cls}">${t.val}</div>
+    </div>`).join('');
+}
+
+/* ── Todas las Transacciones ── */
+function setTxFilter(filter) {
+  txFilter = filter;
+  document.querySelectorAll('#tx-filter-bar .filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === filter);
+  });
+  renderTxTable();
+}
+
+const TX_TABLE_LIMIT = 200;
+
+function renderTxTable() {
+  const body = document.getElementById('all-tx-body');
+  let txs = [...ACCOUNT.transactions].reverse();  // most recent first
+  if (txFilter === 'debitos')  txs = txs.filter(t => t.debito > 0);
+  if (txFilter === 'creditos') txs = txs.filter(t => t.credito > 0);
+
+  if (!txs.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin transacciones aún.')}</div></div>`;
+    return;
+  }
+
+  const shown = txs.slice(0, TX_TABLE_LIMIT);
+  const rows = shown.map(t => `
+    <tr>
+      <td style="font-family:var(--mono);color:var(--text-2)">${t.fecha}</td>
+      <td class="tx-ref" style="font-family:var(--mono);color:var(--text-3)">${esc(t.referencia)}</td>
+      <td><span class="chip">${esc(t.codigo)}</span></td>
+      <td class="tx-desc">${esc(t.descripcion)}</td>
+      <td class="tx-amount debito">${t.debito ? money(t.debito) : ''}</td>
+      <td class="tx-amount credito">${t.credito ? money(t.credito) : ''}</td>
+      <td style="font-family:var(--mono);color:var(--text-3);text-align:right">${money(t.balance)}</td>
+    </tr>`).join('');
+
+  const note = txs.length > TX_TABLE_LIMIT
+    ? `<div style="font-size:11px;color:var(--text-3);margin-top:12px">${tr('Mostrando')} ${TX_TABLE_LIMIT} ${tr('de')} ${txs.length}</div>`
+    : '';
+
+  body.innerHTML = `
+    <table class="tx-table">
+      <thead><tr>
+        <th data-i18n="Fecha">Fecha</th>
+        <th class="tx-ref" data-i18n="Referencia">Referencia</th>
+        <th data-i18n="Código">Código</th>
+        <th data-i18n="Descripción">Descripción</th>
+        <th class="right" data-i18n="Débito">Débito</th>
+        <th class="right" data-i18n="Crédito">Crédito</th>
+        <th class="right" data-i18n="Saldo">Saldo</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${note}`;
+}
+
+/* ── Global search — by descripción or referencia ── */
+const SEARCH_RESULTS_LIMIT = 100;
+
+function searchTransactions(query) {
+  const q = query.trim().toUpperCase();
+  if (!q) return [];
+  return ACCOUNT.transactions
+    .filter(t => t.descripcion.toUpperCase().includes(q) || t.referencia.includes(q))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+function onSearchInput(value) {
+  const box = document.getElementById('search-results');
+  const results = searchTransactions(value);
+
+  if (!value.trim()) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+
+  if (!results.length) {
+    box.innerHTML = `<div class="empty" style="padding:20px 0"><div class="empty-text">${tr('Sin resultados para')} "${esc(value.trim())}".</div></div>`;
+    return;
+  }
+
+  const shown = results.slice(0, SEARCH_RESULTS_LIMIT);
+  const rows = shown.map(t => `
+    <div class="expense-row" style="cursor:default">
+      <div>
+        <div class="expense-name"><span class="chip">${esc(t.codigo)}</span>&nbsp;${esc(t.descripcion)}</div>
+        <div class="expense-meta">${t.fecha} · ${esc(t.referencia)}</div>
+      </div>
+      <div class="expense-amount" style="color:${t.debito ? 'var(--red)' : 'var(--green)'}">${t.debito ? '−' + money(t.debito) : '+' + money(t.credito)}</div>
+    </div>`).join('');
+
+  const countLabel = results.length > SEARCH_RESULTS_LIMIT
+    ? `${tr('Mostrando')} ${SEARCH_RESULTS_LIMIT} ${tr('de')} ${results.length} ${tr('resultados')}`
+    : `${results.length} ${tr('resultado(s)')}`;
+
+  box.innerHTML = `
+    <div style="font-size:11px;color:var(--text-3);margin-bottom:10px">${countLabel}</div>
+    <div style="max-height:60vh;overflow-y:auto">${rows}</div>`;
+}
+
+/* ── Uploads (cargas) management ── */
+function renderUploadsList() {
+  const wrap = document.getElementById('uploads-list');
+  const uploads = [...(ACCOUNT.uploads || [])].sort((a, b) => b.fecha_hasta.localeCompare(a.fecha_hasta));
+
+  if (!uploads.length) {
+    wrap.innerHTML = `<div style="font-size:11px;color:var(--text-3)">${tr('Ninguna carga todavía.')}</div>`;
+    return;
+  }
+
+  wrap.innerHTML = uploads.map(u => `
+    <div class="upload-row">
+      <div class="upload-row-meta">
+        <span>${u.fecha_desde}</span> → <span>${u.fecha_hasta}</span> · ${u.new_tx_count} ${tr('nueva(s)')} ${tr('de')} ${u.tx_count}
+      </div>
+      <button class="btn-del" onclick="deleteUpload('${u.id}')" title="${tr('Eliminar carga')}" aria-label="${tr('Eliminar carga')}">×</button>
+    </div>`).join('');
+}
+
+async function deleteUpload(uploadId) {
+  if (!confirm(tr('¿Eliminar esta carga y sus transacciones? Esta acción no se puede deshacer.'))) return;
+  try {
+    const res = await fetch(`/api/debit-account/uploads/${uploadId}`, {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    if (!res.ok) { toast('⚠', tr('Error al eliminar'), true); return; }
+    const acctRes = await fetch('/api/debit-account');
+    ACCOUNT = await acctRes.json();
+    render();
+    toast('🗑', tr('Carga eliminada'));
+  } catch(e) {
+    toast('⚠', tr('Error al eliminar'), true);
+  }
+}
+
+/* ── Upload flow — mirrors transactions.html's confirm-preview pattern ── */
+function openUploadModal() {
+  document.getElementById('upload-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('file-input')?.focus(), 50);
+}
+
+function closeUploadModal() {
+  document.getElementById('upload-backdrop').classList.remove('open');
+}
+
+async function handleFileSelect(file) {
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+
+  const zone = document.getElementById('upload-zone');
+  zone.classList.add('busy');
+
+  try {
+    const res = await fetch('/api/upload-debit-statement', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN },
+      body: fd
+    });
+    const data = await res.json();
+    if (!res.ok) { toast('⚠', data.error || tr('Error al procesar archivo'), true); return; }
+
+    pendingUpload = data;
+    showPreview(data);
+  } catch(e) {
+    toast('⚠', tr('Error de red al subir archivo'), true);
+  } finally {
+    zone.classList.remove('busy');
+  }
+  document.getElementById('file-input').value = '';
+}
+
+function showPreview(data) {
+  closeUploadModal();
+
+  const zeroNew = data.new_tx_count === 0;
+  const v = data.validation;
+  const confirmBtn = document.getElementById('confirm-upload-btn');
+  let validationHtml = '';
+  if (v && !v.ok) {
+    const issues = [];
+    if (v.balance_breaks.length) issues.push(`${v.balance_breaks.length} ${tr('transacción(es) con saldo que no cuadra')}`);
+    if (v.footer_mismatches.length || v.total_mismatch) issues.push(tr('los totales no coinciden con el resumen del banco'));
+    const warnings = v.warnings || [];
+    if (warnings.length) issues.push(`${warnings.length} ${tr('fila(s) del archivo no se pudieron leer')}`);
+    const warningRows = warnings.slice(0, 5).map(w =>
+      `<div style="font-family:var(--mono);font-size:11px;color:var(--text-2);word-break:break-all">${tr('Línea')} ${w.line}: ${esc(w.row)}</div>`).join('');
+    // The balance chain is a near-exact, self-contained check (unlike the
+    // credit-card statements' inherently ambiguous validation) — a failure
+    // here usually means a real parsing problem, not a benign carried
+    // balance. Saving is still allowed (the bank's own export could in
+    // principle have a rare anomaly), but only after an explicit
+    // acknowledgment, not a click that's easy to make without reading the
+    // warning text above it.
+    validationHtml = `
+      <p id="validation-warning-text" style="font-size:12px;color:var(--amber);margin-top:14px;line-height:1.6">
+        ⚠ ${tr('El archivo no pasó la validación interna:')} ${issues.join(', ')}.
+        ${tr('Puede que el formato del archivo haya cambiado. Revisa antes de guardar.')}
+      </p>
+      ${warningRows}
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--text-2);cursor:pointer">
+        <input type="checkbox" id="validation-ack" aria-describedby="validation-warning-text" onchange="document.getElementById('confirm-upload-btn').disabled = !this.checked">
+        ${tr('Entiendo, guardar de todas formas')}
+      </label>`;
+    confirmBtn.disabled = true;
+  } else {
+    confirmBtn.disabled = false;
+  }
+
+  const dupNote = data.duplicate_count > 0
+    ? `<div class="parse-row"><span class="parse-label">${tr('Ya cargadas (duplicadas)')}</span><span class="parse-val" style="color:var(--text-3)">${data.duplicate_count}</span></div>`
+    : '';
+
+  document.getElementById('preview-body').innerHTML = `
+    <div class="parse-result">
+      <div class="parse-row"><span class="parse-label">${tr('Cuenta')}</span><span class="parse-val" style="color:var(--accent)">${esc(data.cuenta)}</span></div>
+      <div class="parse-row"><span class="parse-label">${tr('Titular')}</span><span class="parse-val">${esc(data.nombre)}</span></div>
+      <div class="parse-row"><span class="parse-label">${tr('Rango de fechas')}</span><span class="parse-val">${data.fecha_desde} → ${data.fecha_hasta}</span></div>
+      <div class="parse-row"><span class="parse-label">${tr('Transacciones nuevas')}</span><span class="parse-val" style="color:${zeroNew ? 'var(--amber)' : 'var(--green)'}">${data.new_tx_count}</span></div>
+      ${dupNote}
+    </div>
+    ${validationHtml}
+    ${zeroNew ? `<p style="font-size:12px;color:var(--amber);margin-top:14px;line-height:1.6">⚠ ${tr('Todas las transacciones de este archivo ya estaban cargadas.')}</p>` : ''}`;
+
+  document.getElementById('preview-backdrop').classList.add('open');
+  setTimeout(() => confirmBtn?.focus(), 50);
+}
+
+async function cancelUpload() {
+  document.getElementById('preview-backdrop').classList.remove('open');
+  try {
+    await fetch('/api/cancel-debit-upload', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pending_id: pendingUpload?.pending_id })
+    });
+  } catch(e) { /* non-fatal — overwritten by the next upload either way */ }
+  pendingUpload = null;
+}
+
+async function confirmUpload() {
+  document.getElementById('preview-backdrop').classList.remove('open');
+  try {
+    const res = await fetch('/api/confirm-debit-statement', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pending_id: pendingUpload?.pending_id,
+        acknowledged: document.getElementById('validation-ack')?.checked === true,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast('⚠', data.error || tr('Error al guardar'), true); pendingUpload = null; return; }
+
+    const acctRes = await fetch('/api/debit-account');
+    ACCOUNT = await acctRes.json();
+    render();
+    toast('✓', `${data.new_tx_count} ${tr('transacción(es) nueva(s) guardada(s)')}`);
+  } catch(e) {
+    toast('⚠', tr('Error al guardar'), true);
+  }
+  pendingUpload = null;
+}
+
+/* ── Toast ── */
+let toastTimer;
+function toast(icon, msg, isError=false) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent = msg;
+  el.classList.toggle('error', isError);
+  el.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+/* ── Upload drag-and-drop visual feedback ── */
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFileSelect(file);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    cancelUpload();
+    closeDayDetail();
+    closeUploadModal();
+  }
+});
+
+boot();
+</script>
+</body>
+</html>

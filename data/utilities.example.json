@@ -1,0 +1,7 @@
+{
+  "providers": [
+    {"key": "water_co", "keyword": "WATER CO", "label": "Water Co · Agua",       "label_en": "Water Co · Water", "color": "#38bdf8", "bill_category": "agua"},
+    {"key": "fuel_co",  "keyword": "FUEL CO",  "label": "Fuel Co · Combustible", "label_en": "Fuel Co · Fuel",   "color": "#2dd4a0"}
+  ],
+  "note": "Copy to utilities.json with your own providers. keyword: text matched in card-statement descriptions (uppercase). Every provider gets a spend-trend tile on /transactions. With bill_category (a category id from categories.json) it is also a monthly bill on /bills; key is stored with bill payments, so don't rename it later. Without bill_category, its rows are kept out of bill lines."
+}

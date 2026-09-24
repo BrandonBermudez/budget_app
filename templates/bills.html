@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pagos · Presupuesto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #080b12;
+      --surface:   #0e1220;
+      --surface-2: #141929;
+      --border:    #1e2438;
+      --border-2:  #252c42;
+      --accent:    #4f7ef7;
+      --accent-btn:#3760d9;
+      --accent-dim:rgba(79,126,247,.12);
+      --green:     #2dd4a0;
+      --green-dim: rgba(45,212,160,.12);
+      --amber:     #f5a623;
+      --red:       #f75c5c;
+      --text:      #dde2f0;
+      --text-2:    #8b93ab;
+      --text-3:    #828aa8;
+      --radius-sm: 8px;
+      --radius:    14px;
+      --font:      'Inter', system-ui, sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+      --transition:.18s cubic-bezier(.4,0,.2,1);
+    }
+    html { font-size: 14px; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+    /* ── Topbar: .topbar / .nav-links / .nav-btn rules match transactions.html;
+       buttons and focus rules below are this page's own. ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .topbar-brand .icon { width: 28px; height: 28px; background: var(--accent-dim); border: 1px solid rgba(79,126,247,.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .nav-links { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+    .nav-btn { padding: 5px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all var(--transition); text-decoration: none; display: inline-flex; align-items: center; }
+    .nav-btn:hover { color: var(--text-2); }
+    .nav-btn.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .btn-icon { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-2); background: transparent; color: var(--text-2); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; }
+    .btn-icon:hover { background: var(--accent-dim); border-color: rgba(79,126,247,.4); color: var(--accent); }
+
+    /* ── Análisis sub-nav. Identical CSS + markup in cash_flow.html,
+       category_budgets.html, bills.html and projection.html (only the active tab differs);
+       change all four together. ── */
+    .subnav { display: flex; flex-wrap: wrap; gap: 2px; padding: 8px 28px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .subnav-tab { padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); text-decoration: none; white-space: nowrap; transition: all var(--transition); }
+    .subnav-tab:hover { color: var(--text-2); }
+    .subnav-tab.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .subnav-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 900px) { .subnav { padding: 8px 14px; } }
+
+    .main { padding: 28px 28px 60px; max-width: 1000px; margin: 0 auto; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+
+    /* ── Tabs / chips ── */
+    .tabs { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; width: fit-content; margin-bottom: 24px; flex-wrap: wrap; }
+    .tab { padding: 6px 18px; border-radius: 8px; border: none; background: transparent; font-family: var(--font); font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; transition: all var(--transition); white-space: nowrap; }
+    .tab.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .nav-btn:focus-visible, .tab:focus-visible, .btn-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Current month checklist ── */
+    .cur-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .cur-count { font-size: 13px; font-weight: 600; }
+    .cur-month { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+    .bill-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: border-color var(--transition); }
+    .bill-row:hover { border-color: var(--border-2); }
+    .bill-row input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
+    .bill-row.paid .bill-name { text-decoration: line-through; color: var(--text-2); }
+    .bill-info { flex: 1; min-width: 0; }
+    .bill-name { font-size: 14px; font-weight: 600; }
+    .bill-sub { font-size: 11px; color: var(--text-3); }
+    .bill-amt { font-family: var(--mono); font-size: 13px; font-weight: 700; text-align: right; }
+
+    /* ── History ── */
+    .hist-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .hist-total .lbl { font-size: 13px; font-weight: 600; }
+    .hist-total .val { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--green); }
+    .table-wrap { overflow-x: auto; }
+    table.hist { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.hist th { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); padding: 8px 10px; border-bottom: 1px solid var(--border-2); text-align: right; white-space: nowrap; }
+    table.hist td { font-family: var(--mono); padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+    table.hist th:first-child, table.hist td:first-child { text-align: left; }
+    table.hist td.none { color: var(--text-3); }
+    table.hist tfoot td { font-weight: 700; border-top: 2px solid var(--border-2); border-bottom: none; }
+    .tick { color: var(--green); font-family: var(--font); margin-left: 4px; }
+    .hist-note { font-size: 11px; color: var(--text-3); margin-top: 12px; }
+
+    .empty { padding: 48px 0; text-align: center; color: var(--text-3); font-size: 13px; }
+
+    /* ── Loading / toast ── */
+    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 14px; transition: opacity .3s; }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast { position: fixed; bottom: 28px; right: 28px; z-index: 1000; display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .25s, transform .25s; }
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    .toast.error { border-color: var(--red); }
+
+    /* Nav on its own row below 900px, as in category_budgets.html. */
+    @media (max-width: 900px) {
+      .topbar { flex-wrap: wrap; row-gap: 8px; height: auto; padding: 10px 14px; }
+      .nav-links { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+    }
+    @media (max-width: 640px) {
+      .main { padding: 20px 14px 48px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos…</div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="icon">🧾</div>
+    <span data-i18n="Pagos">Pagos</span>
+  </div>
+  <nav class="nav-links">
+    <a class="nav-btn" href="/" data-i18n="Presupuesto">Presupuesto</a>
+    <a class="nav-btn" href="/transactions" data-i18n="Transacciones">Transacciones</a>
+    <a class="nav-btn" href="/debit-account" data-i18n="🏦 Cuenta de Débito">🏦 Cuenta de Débito</a>
+    <a class="nav-btn active" href="/cash-flow" aria-current="true">📊 <span data-i18n="Análisis">Análisis</span></a>
+  </nav>
+  <button class="btn-icon lang-toggle" onclick="toggleLang()" style="margin-left:8px" aria-label="Switch language">EN</button>
+</header>
+
+<!-- Análisis sub-nav. Identical markup + CSS in cash_flow.html,
+     category_budgets.html, bills.html and projection.html (only the active tab differs). -->
+<nav class="subnav" aria-label="Análisis">
+  <a class="subnav-tab" href="/cash-flow" data-i18n="Flujo de caja">Flujo de caja</a>
+  <a class="subnav-tab" href="/category-budgets" data-i18n="Presupuesto por categoría">Presupuesto por categoría</a>
+  <a class="subnav-tab active" href="/bills" aria-current="page" data-i18n="Pagos">Pagos</a>
+  <a class="subnav-tab" href="/projection" data-i18n="Próximos 3 meses">Próximos 3 meses</a>
+</nav>
+
+<main class="main">
+  <div class="tabs" id="bill-tabs" role="tablist">
+    <button class="tab active" role="tab" id="tab-current" aria-controls="view-current" aria-selected="true" data-view="current" onclick="switchView('current')" data-i18n="Este mes">Este mes</button>
+    <button class="tab" role="tab" id="tab-history" aria-controls="view-history" aria-selected="false" tabindex="-1" data-view="history" onclick="switchView('history')" data-i18n="Historial">Historial</button>
+  </div>
+  <section id="view-current" role="tabpanel" aria-labelledby="tab-current"></section>
+  <section id="view-history" role="tabpanel" aria-labelledby="tab-history" style="display:none">
+    <div class="tabs" id="period-chips" role="group"></div>
+    <div id="history-body"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-icon">✓</span>&nbsp;<span id="toast-msg"></span></div>
+
+<script src="/static/i18n.js"></script>
+<script>const UTILITY_PROVIDERS = {{ utility_providers|tojson }}; addTranslations(Object.fromEntries(UTILITY_PROVIDERS.map(p => [p.label, p.label_en])));</script>
+<script src="/static/spend.js"></script>
+<script src="/static/bills.js"></script>
+<script>
+'use strict';
+
+let CSRF_TOKEN = null;
+let VERSION = 0;
+let BILL_PAYMENTS = [];
+let ALL = { months: [], lines: [], totalAvgUsd: 0 };
+let currentView = 'current';
+let period = null;   // null = all months, else N = the last N months of the data
+let saving = false;
+
+const PERIODS = [[null, 'Todo'], [12, 'Últimos 12 meses'], [6, 'Últimos 6 meses'], [3, 'Últimos 3 meses']];
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const usd = n => (n < 0 ? '−$' : '$') + fmt(Math.abs(n));
+function monthLabel(m) {
+  const [y, mm] = m.split('-');
+  return `${monthNameFor(parseInt(mm, 10) - 1)} ${y}`;
+}
+function thisMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function boot() {
+  applyStaticAll();
+  onLangChange(render);
+  try {
+    CSRF_TOKEN = (await (await fetch('/api/csrf-token')).json()).csrf_token;
+    const [data, categories, statements] = await Promise.all(
+      ['/api/data', '/api/categories', '/api/statements'].map(u => fetch(u).then(r => {
+        if (!r.ok) throw new Error(u);
+        return r.json();
+      })));
+    loadSpend({ statements, categories });
+    applyBudget(data);
+    render();
+  } catch (e) {
+    toast('⚠', tr('Error al cargar datos'), true);
+  } finally {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 400);
+  }
+}
+
+function applyBudget(data) {
+  VERSION = data._version || 0;
+  BILL_PAYMENTS = (data._local && data._local.bill_payments) || [];
+}
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('#bill-tabs .tab').forEach(t => {
+    const on = t.dataset.view === view;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+    t.tabIndex = on ? 0 : -1;
+  });
+  document.getElementById('view-current').style.display = view === 'current' ? '' : 'none';
+  document.getElementById('view-history').style.display = view === 'history' ? '' : 'none';
+  render();
+}
+
+// WAI-ARIA tabs: roving tabindex, arrows / Home / End move between tabs.
+document.getElementById('bill-tabs').addEventListener('keydown', e => {
+  const tabs = [...document.querySelectorAll('#bill-tabs .tab')];
+  const i = tabs.indexOf(document.activeElement);
+  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+  if (i < 0 || next === undefined) return;
+  e.preventDefault();
+  const t = tabs[(next + tabs.length) % tabs.length];
+  switchView(t.dataset.view);
+  t.focus();
+});
+
+function render() {
+  ALL = computeBills();
+  if (currentView === 'current') renderCurrent(); else renderHistory();
+}
+
+function renderCurrent() {
+  const el = document.getElementById('view-current');
+  if (!ALL.lines.length) {
+    el.innerHTML = `<div class="empty">${tr('Sin pagos fijos aún.')}</div>`;
+    return;
+  }
+  const month = thisMonth();
+  const paid = paidKeysFor(BILL_PAYMENTS, month);
+  const nPaid = ALL.lines.filter(l => paid.has(l.key)).length;
+  el.innerHTML = `
+    <div class="cur-head">
+      <span class="cur-count">${nPaid} / ${ALL.lines.length} ${tr('pagados')}</span>
+      <span class="cur-month">${esc(monthLabel(month))}</span>
+    </div>
+    ${ALL.lines.map(l => `
+      <label class="bill-row${paid.has(l.key) ? ' paid' : ''}">
+        <input type="checkbox" ${paid.has(l.key) ? 'checked' : ''} ${saving ? 'disabled' : ''}
+          onchange="togglePaid('${l.key}', '${month}', this.checked)" />
+        <span class="bill-info">
+          <span class="bill-name" style="display:block">${esc(tr(l.label))}</span>
+          <span class="bill-sub">${tr('Último cobro:')} ${esc(l.lastDate)}</span>
+        </span>
+        <span class="bill-amt" style="color:${esc(l.color)}">${usd(l.lastChargeUsd)}</span>
+      </label>`).join('')}`;
+}
+
+function renderHistory() {
+  document.getElementById('period-chips').innerHTML = PERIODS.map(([n, label]) =>
+    `<button class="tab${period === n ? ' active' : ''}" aria-pressed="${period === n}" onclick="setPeriod(${n})">${tr(label)}</button>`).join('');
+  const body = document.getElementById('history-body');
+  const filter = period ? new Set(ALL.months.slice(-period)) : null;
+  const R = filter ? computeBills({ monthsFilter: filter }) : ALL;
+  if (!R.lines.length) {
+    body.innerHTML = `<div class="empty">${tr('Sin pagos fijos aún.')}</div>`;
+    return;
+  }
+  const cell = (l, m) => {
+    const v = l.byMonth[m];
+    const tick = paidKeysFor(BILL_PAYMENTS, m).has(l.key) ? `<span class="tick" title="${tr('Pagado')}">✓</span>` : '';
+    if (v === undefined) return `<td class="none">—${tick}</td>`;
+    return `<td>${usd(v)}${tick}</td>`;
+  };
+  body.innerHTML = `
+    <div class="card hist-total">
+      <span class="lbl">${tr('Total mensual promedio')}</span>
+      <span class="val">${usd(R.totalAvgUsd)}</span>
+    </div>
+    <div class="card table-wrap">
+      <table class="hist">
+        <thead><tr><th scope="col">${tr('Mes')}</th>${R.lines.map(l => `<th scope="col" style="color:${esc(l.color)}">${esc(tr(l.label))}</th>`).join('')}</tr></thead>
+        <tbody>${R.months.slice().reverse().map(m =>
+          `<tr><td>${esc(monthLabel(m))}</td>${R.lines.map(l => cell(l, m)).join('')}</tr>`).join('')}</tbody>
+        <tfoot><tr><td>${tr('Promedio / mes')}</td>${R.lines.map(l =>
+          `<td>${usd(l.avgUsd)}</td>`).join('')}</tr></tfoot>
+      </table>
+      <div class="hist-note">${tr('Montos por mes calendario del cobro (suma del mes). Promedio = total ÷ meses con cobro.')}</div>
+    </div>`;
+}
+
+function setPeriod(n) { period = n; renderHistory(); }
+
+async function togglePaid(key, month, paid) {
+  if (saving) return;
+  saving = true;
+  // Optimistic: apply the server's upsert/delete locally so the row redraws
+  // in its new state while the PUT is in flight; restored on failure.
+  const prev = BILL_PAYMENTS;
+  BILL_PAYMENTS = prev.filter(b => !(b && b.category_key === key && b.month === month));
+  if (paid) BILL_PAYMENTS.push({ category_key: key, month, paid: true });
+  render();
+  try {
+    const res = await fetch('/api/bill-payments', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ category_key: key, month, paid, _version: VERSION }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      toast('⚠', tr('Los datos cambiaron en otra sesión — recargando…'), true);
+      applyBudget(await (await fetch('/api/data')).json());
+    } else if (!res.ok) {
+      BILL_PAYMENTS = prev;
+      toast('⚠', body.error || tr('Error al guardar'), true);
+    } else {
+      VERSION = body.version;
+      BILL_PAYMENTS = body.bill_payments;
+    }
+  } catch (e) {
+    BILL_PAYMENTS = prev;
+    toast('⚠', tr('Error de red al guardar'), true);
+  } finally {
+    saving = false;
+    render();
+  }
+}
+
+let toastTimer = null;
+function toast(icon, msg, isError = false) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent = msg;
+  el.classList.toggle('error', isError);
+  el.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+boot();
+</script>
+</body>
+</html>

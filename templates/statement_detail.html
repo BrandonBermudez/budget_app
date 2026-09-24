@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detalle de Estado · Presupuesto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #080b12; --surface:   #0e1220; --surface-2: #141929;
+      --border:    #1e2438; --border-2:  #252c42;
+      --accent:    #4f7ef7; --accent-dim:rgba(79,126,247,.12); --accent-btn:#3760d9;
+      --green:     #2dd4a0; --green-dim: rgba(45,212,160,.12);
+      --amber:     #f5a623; --amber-dim: rgba(245,166,35,.12);
+      --red:       #f75c5c; --red-dim:   rgba(247,92,92,.12);
+      --purple:    #a78bfa; --purple-dim:rgba(167,139,250,.12);
+      --text:      #dde2f0; --text-2:    #8b93ab; --text-3:    #828aa8;
+      --radius-sm: 8px; --radius: 14px; --radius-lg: 20px;
+      --font:      'Inter', system-ui, sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+      --transition:.18s cubic-bezier(.4,0,.2,1);
+    }
+    html { font-size: 14px; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 56px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 200; }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .topbar-brand .icon { width: 28px; height: 28px; background: var(--accent-dim); border: 1px solid rgba(79,126,247,.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .nav-links { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+    .nav-btn { padding: 5px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all var(--transition); text-decoration: none; display: inline-flex; align-items: center; }
+    .nav-btn:hover { color: var(--text-2); }
+    .nav-btn:focus-visible, .filter-btn:focus-visible, .back-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nav-btn.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+
+    .main { padding: 28px 28px 60px; max-width: 1200px; margin: 0 auto; }
+
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); font-size: 12px; text-decoration: none; margin-bottom: 20px; transition: color var(--transition); position: sticky; top: 66px; z-index: 100; background: var(--bg); padding: 6px 0; }
+    .back-btn:hover { color: var(--accent); }
+
+    /* ── Section label ── */
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); margin: 32px 0 14px; display: flex; align-items: center; gap: 12px; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Card ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 14px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+    .card-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+
+    /* ── Header info grid ── */
+    .stmt-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 0; }
+    .meta-block { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
+    .meta-label { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); margin-bottom: 4px; }
+    .meta-val { font-family: var(--mono); font-size: 15px; font-weight: 700; }
+    .meta-val.green { color: var(--green); }
+    .meta-val.amber { color: var(--amber); }
+    .meta-val.red   { color: var(--red); }
+    .meta-val.blue  { color: var(--accent); }
+    .meta-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+
+    /* ── Filter bar ── */
+    .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-btn { padding: 5px 14px; border-radius: 99px; font-size: 11px; font-weight: 600; border: 1px solid var(--border-2); background: transparent; color: var(--text-3); cursor: pointer; transition: all var(--transition); font-family: var(--font); }
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active { background: var(--accent-btn); border-color: var(--accent-btn); color: #fff; }
+    .search-input { background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--radius-sm); color: var(--text); font-family: var(--font); font-size: 12px; padding: 6px 12px; outline: none; width: 220px; transition: border-color var(--transition); }
+    .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,126,247,.15); }
+    .search-input::placeholder { color: var(--text-3); }
+
+    /* ── Transaction table ── */
+    .tx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .tx-table th { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border-2); }
+    .tx-table th.right { text-align: right; }
+    .tx-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .tx-table tr:last-child td { border-bottom: none; }
+    .tx-table tr:hover td { background: var(--surface-2); }
+    .tx-table tr.cargo td { }
+    .tx-table tr.credito td { opacity: .7; }
+    .tx-table tr.bonificacion td { opacity: .55; }
+
+    .tx-ref { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+    .tx-date { font-family: var(--mono); font-size: 11px; color: var(--text-2); white-space: nowrap; }
+    .tx-desc { font-size: 12px; font-weight: 500; max-width: 300px; overflow-wrap: anywhere; }
+    .tx-sub { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+    .tx-amount { font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; white-space: nowrap; }
+    .tx-amount.usd { color: var(--red); }
+    .tx-amount.cr  { color: var(--green); }
+
+    .chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+    .chip.cargo       { background: var(--red-dim);    color: var(--red); }
+    .chip.credito     { background: var(--green-dim);  color: var(--green); }
+    .chip.cuota       { background: var(--accent-dim); color: var(--accent); }
+    .chip.bonificacion{ background: var(--purple-dim); color: var(--purple); }
+
+    /* ── Category badge / inline editor ── */
+    .cat-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); white-space: nowrap; }
+    .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cat-add-btn { font-size: 11px; font-weight: 600; color: var(--text-3); background: transparent; border: 1px dashed var(--border-2); border-radius: 99px; padding: 3px 10px; cursor: pointer; transition: all var(--transition); font-family: var(--font); }
+    .cat-add-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .cat-editor { display: flex; align-items: center; gap: 4px; }
+    .cat-editor-input { width: 130px; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 10px; padding: 4px 6px; outline: none; }
+    .cat-editor-input:focus { border-color: var(--accent); }
+    .cat-editor-select { background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; color: var(--text); font-family: var(--font); font-size: 11px; padding: 4px 6px; outline: none; cursor: pointer; }
+    .cat-editor-save, .cat-editor-cancel { width: 22px; height: 22px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cat-editor-save { background: var(--green-dim); color: var(--green); }
+    .cat-editor-cancel { background: var(--border); color: var(--text-3); }
+
+    /* ── Totals row ── */
+    .tx-totals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-2); }
+    .tx-total-block { text-align: right; }
+    .tx-total-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 3px; }
+    .tx-total-val { font-family: var(--mono); font-size: 14px; font-weight: 700; }
+
+    /* ── Subcard divider ── */
+    .subcard-header { display: flex; align-items: center; gap: 10px; padding: 10px 0 8px; margin-top: 8px; }
+    .subcard-chip { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; font-family: var(--mono); background: var(--surface-2); border: 1px solid var(--border-2); color: var(--text-2); }
+    .subcard-line { flex: 1; height: 1px; background: var(--border); }
+
+    .empty { padding: 36px 0; text-align: center; color: var(--text-3); font-size: 12px; }
+
+    .toast { position: fixed; bottom: 28px; right: 28px; z-index: 1000; display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .25s, transform .25s; }
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    .toast.error { border-color: var(--red); }
+
+    /* Loading */
+    #loading { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 14px; transition: opacity .3s; }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) {
+      .stmt-meta { grid-template-columns: 1fr 1fr; }
+      .main { padding: 16px 14px 60px; }
+      .topbar { padding: 0 14px; }
+      .tx-table .tx-ref { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      .tx-table .chip { display: none; }
+    }
+
+    @media (max-width: 800px) {
+      .topbar { flex-wrap: wrap; row-gap: 8px; height: auto; padding: 10px 14px; }
+      .nav-links { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)" data-i18n="Cargando estado…">Cargando estado…</div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="icon">💳</div>
+    <span id="topbar-title">Estado de Cuenta</span>
+  </div>
+  <nav class="nav-links">
+    <a class="nav-btn" href="/" data-i18n="Presupuesto">Presupuesto</a>
+    <a class="nav-btn active" href="/transactions" data-i18n="Transacciones">Transacciones</a>
+    <a class="nav-btn" href="/debit-account" data-i18n="🏦 Cuenta de Débito">🏦 Cuenta de Débito</a>
+    <a class="nav-btn" href="/cash-flow">📊 <span data-i18n="Análisis">Análisis</span></a>
+  </nav>
+  <button class="icon-btn lang-toggle" onclick="toggleLang()" style="margin-left:8px;background:transparent;border:1px solid var(--border-2);color:var(--text-2);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:var(--font)" aria-label="Switch language">EN</button>
+</header>
+
+<main class="main">
+  <a class="back-btn" href="/transactions" data-i18n="← Volver a Transacciones">← Volver a Transacciones</a>
+  <div id="page-body"></div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-icon">✓</span>&nbsp;<span id="toast-msg"></span></div>
+
+<script src="/static/i18n.js"></script>
+<script>
+'use strict';
+
+const STMT_ID = {{ statement_id | tojson }};
+let filterType   = 'all';
+let searchQuery  = '';
+let currentStmt  = null;
+let CSRF_TOKEN   = null;
+let CATEGORIES   = {};      // { category_id: { label, color, keywords: [...] } }
+let CATEGORY_LOOKUP = [];   // flat [keyword, category_id], sorted longest-keyword-first
+let editingCategoryFor = null;  // ref of the transaction row currently showing the inline editor
+
+function money(n) {
+  if (n === 0 || n == null) return '—';
+  return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function setCategories(data) {
+  CATEGORIES = data;
+  rebuildCategoryLookup();
+}
+
+function rebuildCategoryLookup() {
+  // Longest-keyword-first so a more specific rule (e.g. "AMAZONPRIME") wins
+  // over a shorter one that would otherwise also match ("AMAZON").
+  CATEGORY_LOOKUP = Object.entries(CATEGORIES)
+    .flatMap(([cid, c]) => c.keywords.map(kw => [kw, cid]))
+    .sort((a, b) => b[0].length - a[0].length);
+}
+
+function categorize(descripcion, tipo) {
+  if (tipo === 'cuota') return 'installments';
+  if (tipo !== 'cargo') return null;
+  const upper = (descripcion || '').toUpperCase();
+  const hit = CATEGORY_LOOKUP.find(([kw]) => upper.includes(kw));
+  return hit ? hit[1] : null;
+}
+
+// A generalizable starting guess for a new keyword rule — cuts at the first
+// "*"/long-digit-run (order refs, phone numbers) so it matches future
+// transactions from the same merchant, not just this one exact line.
+function suggestKeyword(descripcion) {
+  return (descripcion || '')
+    .split('*')[0]
+    .replace(/\s+\d{4,}.*$/, '')
+    .replace(/[\\/]+$/, '')
+    .trim()
+    .toUpperCase();
+}
+
+async function boot() {
+  applyStaticAll();
+  onLangChange(() => { if (currentStmt) renderPage(currentStmt, currentStmt.card_name); });
+  try {
+    const [tokRes, catRes, res] = await Promise.all([
+      fetch('/api/csrf-token'),
+      fetch('/api/categories'),
+      fetch(`/api/statement/${STMT_ID}`)
+    ]);
+    CSRF_TOKEN = (await tokRes.json()).csrf_token;
+    setCategories(await catRes.json());
+
+    if (!res.ok) {
+      document.getElementById('page-body').innerHTML = `<div class="empty">${tr('Estado de cuenta no encontrado.')}</div>`;
+      return;
+    }
+
+    const stmt = await res.json();
+    const cardName = stmt.card_name;
+
+    document.getElementById('topbar-title').textContent = `${cardName} · ${stmt.fecha_corte}`;
+    document.title = `${cardName} ${stmt.fecha_corte} · Transacciones`;
+
+    renderPage(stmt, cardName);
+  } catch(e) {
+    document.getElementById('page-body').innerHTML = `<div class="empty">${tr('Error al cargar datos.')}</div>`;
+  } finally {
+    const ov = document.getElementById('loading');
+    ov.classList.add('hidden');
+    setTimeout(() => ov.remove(), 400);
+  }
+}
+
+function renderPage(stmt, cardName) {
+  const cargos  = stmt.transactions.filter(t => t.tipo === 'cargo');
+  const credits = stmt.transactions.filter(t => t.tipo === 'credito');
+  const cuotas  = stmt.transactions.filter(t => t.tipo === 'cuota');
+  const bonifs  = stmt.transactions.filter(t => t.tipo === 'bonificacion');
+
+  // "Cargos" here means everything actually charged this cycle — a
+  // converted "Compras a Plazo" purchase's monthly cuota is a real charge
+  // too, it's just paid in installments rather than all at once. Excluding
+  // it made this tile understate the card's real spend (e.g. showing $12.34
+  // while $456.78 in cuotas sat only in the separate tile below).
+  const totalUSD = cargos.reduce((s, t) => s + t.monto_usd, 0) + cuotas.reduce((s, t) => s + t.monto_usd, 0);
+  const totalCR  = credits.reduce((s, t) => s + Math.abs(t.monto_usd), 0);
+
+  document.getElementById('page-body').innerHTML = `
+    <!-- Statement meta -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">${esc(cardName)}</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--text-3)">ID: ${esc(stmt.id)}</span>
+      </div>
+      <div class="stmt-meta">
+        <div class="meta-block">
+          <div class="meta-label">${tr('Fecha de Corte')}</div>
+          <div class="meta-val blue">${esc(stmt.fecha_corte)}</div>
+          <div class="meta-sub">${tr('Límite pago:')} ${esc(stmt.fecha_limite) || '—'}</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">${tr('Pago de Contado')}</div>
+          <div class="meta-val amber">${money(stmt.pago_contado_usd)}</div>
+        </div>
+        <div class="meta-block">
+          <div class="meta-label">${tr('Saldo al Corte')}</div>
+          <div class="meta-val red">${money(stmt.saldo_dolares)}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px">
+      <div class="meta-block">
+        <div class="meta-label">${tr('Cargos USD')}</div>
+        <div class="meta-val red">${money(totalUSD)}</div>
+        <div class="meta-sub">${cargos.filter(t=>t.monto_usd>0).length + cuotas.length} ${tr('transacciones')}</div>
+      </div>
+      <div class="meta-block">
+        <div class="meta-label">${tr('Créditos / Pagos')}</div>
+        <div class="meta-val green">${credits.length ? money(totalCR) : '—'}</div>
+        <div class="meta-sub">${credits.length} ${tr('transacciones')}</div>
+      </div>
+      <div class="meta-block">
+        <div class="meta-label">${tr('Cuotas a Plazo')}</div>
+        <div class="meta-val blue">${cuotas.length ? money(cuotas.reduce((s,t)=>s+t.monto_usd,0)) : '—'}</div>
+        <div class="meta-sub">${cuotas.length} ${tr('cuota(s)')}</div>
+      </div>
+    </div>
+
+    ${(stmt.unparsed || []).length ? `
+    <div class="card" style="border-color:var(--amber)">
+      <div class="card-header">
+        <span class="card-title" style="color:var(--amber)">⚠ ${stmt.unparsed.length} ${tr('línea(s) no reconocida(s)')}</span>
+      </div>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 10px">${tr('Parecen transacciones pero el lector no pudo interpretarlas; no están incluidas en los totales.')}</p>
+      <div style="max-height:200px;overflow-y:auto">${stmt.unparsed.map(line => `<div style="font-family:var(--mono);font-size:11px;color:var(--text-2);word-break:break-all;padding:3px 0">${esc(line)}</div>`).join('')}</div>
+    </div>` : ''}
+
+    <!-- Transaction list -->
+    <div class="section-label">${tr('Transacciones')}</div>
+    <div class="card">
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <button class="filter-btn ${filterType==='all'?'active':''}"       data-filter="all"          onclick="setFilter('all')">${tr('Todas')} (${stmt.transactions.length})</button>
+        <button class="filter-btn ${filterType==='cargo'?'active':''}"     data-filter="cargo"        onclick="setFilter('cargo')">${tr('Cargos')} (${cargos.length})</button>
+        <button class="filter-btn ${filterType==='credito'?'active':''}"   data-filter="credito"      onclick="setFilter('credito')">${tr('Créditos')} (${credits.length})</button>
+        <button class="filter-btn ${filterType==='cuota'?'active':''}"     data-filter="cuota"        onclick="setFilter('cuota')">${tr('Cuotas')} (${cuotas.length})</button>
+        ${bonifs.length ? `<button class="filter-btn ${filterType==='bonificacion'?'active':''}" data-filter="bonificacion" onclick="setFilter('bonificacion')">${tr('Bonificaciones')} (${bonifs.length})</button>` : ''}
+        <input class="search-input" type="text" placeholder="Buscar descripción…" data-i18n-placeholder="Buscar descripción…" oninput="setSearch(this.value)" value="${searchQuery}" />
+      </div>
+      <div id="tx-body"></div>
+    </div>
+
+    ${stmt.raw_markdown ? `
+    <!-- Raw markdown source -->
+    <div class="section-label">${tr('Documento Original')}</div>
+    <div class="card">
+      <details>
+        <summary style="cursor:pointer;font-size:12px;color:var(--text-2);user-select:none">
+          ${tr('Ver texto convertido')}${stmt.source_type === 'pdf' ? ' (PDF → markdown)' : ''}
+        </summary>
+        <pre style="margin-top:14px;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);
+             font-size:11px;color:var(--text-2);background:var(--bg);border:1px solid var(--border);
+             border-radius:var(--radius-sm);padding:14px;max-height:420px;overflow-y:auto">${esc(stmt.raw_markdown)}</pre>
+      </details>
+    </div>` : ''}`;
+
+  // Store stmt ref for filter re-renders
+  currentStmt = stmt;
+  renderTxTable(stmt);
+}
+
+function setFilter(type) {
+  filterType = type;
+  // Re-render filter buttons without re-rendering whole page
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === type);
+  });
+  renderTxTable(currentStmt);
+}
+
+function setSearch(q) {
+  searchQuery = q.toLowerCase();
+  renderTxTable(currentStmt);
+}
+
+function renderTxTable(stmt) {
+  let txs = stmt.transactions;
+
+  if (filterType !== 'all') txs = txs.filter(t => t.tipo === filterType);
+  if (searchQuery)          txs = txs.filter(t => t.descripcion.toLowerCase().includes(searchQuery));
+
+  if (!txs.length) {
+    document.getElementById('tx-body').innerHTML = `<div class="empty">${tr('Sin transacciones para este filtro.')}</div>`;
+    return;
+  }
+
+  // Group by subtarjeta
+  const subGroups = {};
+  txs.forEach(t => {
+    const key = t.subtarjeta || 'principal';
+    if (!subGroups[key]) subGroups[key] = [];
+    subGroups[key].push(t);
+  });
+
+  const totalUSD = txs.filter(t=>t.tipo==='cargo').reduce((s,t)=>s+t.monto_usd,0);
+  const totalCRUSD = txs.filter(t=>t.tipo==='credito').reduce((s,t)=>s+Math.abs(t.monto_usd),0);
+
+  let html = '<div style="overflow-x:auto">';
+
+  for (const [subcard, rows] of Object.entries(subGroups)) {
+    if (Object.keys(subGroups).length > 1) {
+      html += `
+        <div class="subcard-header">
+          <span class="subcard-chip">${esc(subcard)}</span>
+          <div class="subcard-line"></div>
+          <span style="font-size:11px;color:var(--text-3)">${rows.length} tx</span>
+        </div>`;
+    }
+
+    html += `
+      <table class="tx-table">
+        <thead>
+          <tr>
+            <th>${tr('Referencia')}</th>
+            <th>${tr('Fecha')}</th>
+            <th>${tr('Descripción')}</th>
+            <th>${tr('Tipo')}</th>
+            <th>${tr('Categoría')}</th>
+            <th class="right">$ ${tr('Dólares')}</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    rows.forEach(t => {
+      const isCR    = t.tipo === 'credito';
+      const isCuota = t.tipo === 'cuota';
+      const isBonif = t.tipo === 'bonificacion';
+
+      const usdAmt = t.monto_usd !== 0
+        ? `<span class="tx-amount ${isCR?'cr':'usd'}">${isCR?'+ ':''}${money(Math.abs(t.monto_usd))}</span>` : '—';
+
+      html += `
+        <tr class="${t.tipo}">
+          <td><span class="tx-ref">${esc(t.ref)}</span></td>
+          <td><span class="tx-date">${esc(t.fecha)}</span></td>
+          <td>
+            <div class="tx-desc">${esc(t.descripcion)}</div>
+          </td>
+          <td><span class="chip ${t.tipo}">${labelTipo(t.tipo)}</span></td>
+          <td>${renderCategoryCell(t)}</td>
+          <td>${usdAmt}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+  }
+
+  html += '</div>';
+
+  // Totals bar
+  html += `
+    <div class="tx-totals">
+      <div class="tx-total-block">
+        <div class="tx-total-label">${tr('Cargos USD')}</div>
+        <div class="tx-total-val" style="color:var(--red)">${totalUSD ? money(totalUSD) : '—'}</div>
+      </div>
+      <div class="tx-total-block">
+        <div class="tx-total-label">${tr('Créditos USD')}</div>
+        <div class="tx-total-val" style="color:var(--green)">${totalCRUSD ? money(totalCRUSD) : '—'}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('tx-body').innerHTML = html;
+}
+
+function renderCategoryCell(t) {
+  // Credits/bonifications aren't spend — categorizing them isn't meaningful.
+  if (t.tipo === 'credito' || t.tipo === 'bonificacion') {
+    return '<span style="color:var(--text-3);font-size:11px">—</span>';
+  }
+  // Installments are always their own category by transaction type, not by
+  // merchant keyword — nothing to edit here.
+  if (t.tipo === 'cuota') return categoryBadge('installments', CATEGORIES.installments, null);
+
+  if (editingCategoryFor === t.ref) return renderCategoryEditor(t);
+
+  const cid = categorize(t.descripcion, t.tipo);
+  if (cid) return categoryBadge(cid, CATEGORIES[cid], t.ref);
+  return `<button class="cat-add-btn" onclick="startEditCategory('${esc(t.ref)}')">+ ${tr('Categorizar')}</button>`;
+}
+
+function categoryBadge(cid, category, editableRef) {
+  const clickable = editableRef
+    ? ` onclick="startEditCategory('${esc(editableRef)}')" style="cursor:pointer" title="Cambiar categoría"`
+    : '';
+  return `<span class="cat-badge"${clickable}><span class="cat-dot" style="background:${esc(category.color)}"></span>${esc(catLabelFor(cid, category.label))}</span>`;
+}
+
+function renderCategoryEditor(t) {
+  const suggested = suggestKeyword(t.descripcion);
+  const options = Object.entries(CATEGORIES)
+    // Installments is auto-assigned by transaction type, not a manual choice.
+    .filter(([cid]) => cid !== 'installments')
+    .map(([cid, c]) => `<option value="${cid}">${esc(catLabelFor(cid, c.label))}</option>`).join('');
+  return `
+    <div class="cat-editor" onclick="event.stopPropagation()">
+      <input type="text" class="cat-editor-input" id="cat-kw-${esc(t.ref)}" value="${esc(suggested)}"
+             title="Este texto se usará para reconocer este comercio en futuros estados de cuenta" />
+      <select class="cat-editor-select" id="cat-sel-${esc(t.ref)}">${options}</select>
+      <button class="cat-editor-save" onclick="saveCategory('${esc(t.ref)}')" title="Guardar">✓</button>
+      <button class="cat-editor-cancel" onclick="cancelEditCategory()" title="Cancelar">×</button>
+    </div>`;
+}
+
+function startEditCategory(ref) {
+  editingCategoryFor = ref;
+  renderTxTable(currentStmt);
+}
+
+function cancelEditCategory() {
+  editingCategoryFor = null;
+  renderTxTable(currentStmt);
+}
+
+async function saveCategory(ref) {
+  const keyword  = document.getElementById(`cat-kw-${ref}`).value.trim();
+  const category = document.getElementById(`cat-sel-${ref}`).value;
+  if (!keyword) { toast('⚠', tr('Escribe un texto para identificar el comercio'), true); return; }
+
+  try {
+    const res = await fetch('/api/categories/assign', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body:    JSON.stringify({ keyword, category })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast('⚠', data.error || tr('Error al guardar categoría'), true); return; }
+
+    // Apply the new rule locally so every transaction from this merchant —
+    // not just this row — updates immediately, without a round-trip refetch.
+    Object.values(CATEGORIES).forEach(c => {
+      const i = c.keywords.indexOf(data.keyword);
+      if (i > -1) c.keywords.splice(i, 1);
+    });
+    CATEGORIES[data.category].keywords.push(data.keyword);
+    rebuildCategoryLookup();
+
+    editingCategoryFor = null;
+    renderTxTable(currentStmt);
+    toast('✓', `${tr('Categorizado como')} ${catLabelFor(data.category, CATEGORIES[data.category].label)}`);
+  } catch (e) {
+    toast('⚠', tr('Error de red al guardar categoría'), true);
+  }
+}
+
+function labelTipo(tipo) {
+  return tr({ cargo: 'Cargo', credito: 'Crédito', cuota: 'Cuota', bonificacion: 'Bonif.' }[tipo] || tipo);
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+let toastTimer;
+function toast(icon, msg, isError = false) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent  = msg;
+  el.classList.toggle('error', isError);
+  el.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+boot();
+</script>
+</body>
+</html>

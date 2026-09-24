@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transacciones · Presupuesto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <!-- Chart.js loaded synchronously so it is always ready before boot() -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #080b12;
+      --surface:   #0e1220;
+      --surface-2: #141929;
+      --border:    #1e2438;
+      --border-2:  #252c42;
+      --accent:    #4f7ef7;
+      --accent-btn:#3760d9;
+      --accent-dim:rgba(79,126,247,.12);
+      --green:     #2dd4a0;
+      --green-dim: rgba(45,212,160,.12);
+      --amber:     #f5a623;
+      --amber-dim: rgba(245,166,35,.12);
+      --red:       #f75c5c;
+      --red-dim:   rgba(247,92,92,.12);
+      --purple:    #a78bfa;
+      --purple-dim:rgba(167,139,250,.12);
+      --text:      #dde2f0;
+      --text-2:    #8b93ab;
+      --text-3:    #828aa8;
+      --radius-sm: 8px;
+      --radius:    14px;
+      --radius-lg: 20px;
+      --font:      'Inter', system-ui, sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+      --transition:.18s cubic-bezier(.4,0,.2,1);
+    }
+    html { font-size: 14px; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+
+    /* ── Layout ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .topbar-brand .icon { width: 28px; height: 28px; background: var(--accent-dim); border: 1px solid rgba(79,126,247,.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .nav-links { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+    .nav-btn { padding: 5px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all var(--transition); text-decoration: none; display: inline-flex; align-items: center; }
+    .nav-btn:hover { color: var(--text-2); }
+    .nav-btn.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+
+    .main { padding: 28px 28px 60px; max-width: 1200px; margin: 0 auto; }
+
+    /* ── Section label ── */
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); margin: 32px 0 14px; display: flex; align-items: center; gap: 12px; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Card ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .card-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; width: fit-content; margin-bottom: 24px; flex-wrap: wrap; }
+    .tab { padding: 6px 18px; border-radius: 8px; border: none; background: transparent; font-family: var(--font); font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; transition: all var(--transition); user-select: none; white-space: nowrap; }
+    .page-nav-btn:focus-visible, .nav-btn:focus-visible, .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .tab.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border-2); border-radius: var(--radius);
+      padding: 32px; text-align: center; cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
+    .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-zone.busy { opacity: .5; pointer-events: none; }
+    .upload-icon { font-size: 28px; margin-bottom: 10px; }
+    .upload-label { font-size: 13px; font-weight: 500; color: var(--text-2); }
+    .upload-sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+    #email-search-btn:disabled { opacity: .5; cursor: default; pointer-events: none; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    input[type=color] { width: 34px; height: 28px; padding: 2px; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; cursor: pointer; }
+
+    /* ── Compact upload-status line (replaces the old 3-tile KPI row) ── */
+    .upload-kpi-line { font-size: 12px; color: var(--text-3); padding: 0 2px; }
+    .upload-kpi-line span { font-family: var(--mono); color: var(--text-2); font-weight: 600; }
+
+    /* ── Global period (from → to) ── */
+    .period-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; font-size: 12px; color: var(--text-3); }
+    .period-bar .tab { padding: 4px 12px; font-size: 11px; }
+
+    /* ── Spend breakdown card ── */
+    .spend-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 24px; }
+    .spend-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; font-size: 13px; }
+    .spend-row .spend-label { color: var(--text-2); }
+    .spend-row .spend-val { font-family: var(--mono); font-weight: 600; }
+    .spend-row.total { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 10px; font-weight: 700; }
+    .spend-row.total .spend-val { font-size: 15px; color: var(--text); }
+
+    /* ── Monthly spend trend chart ── */
+    .chart-container { position: relative; height: 260px; }
+    /* ── Category bar chart — height is set inline per render, sized to bar count ── */
+    .category-chart-container { position: relative; }
+
+    /* ── Year insight tiles ── */
+    .insight-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .insight-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+    .insight-label { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+    .insight-val { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.1; }
+    .insight-val.small { font-size: 16px; }
+    .insight-sub { font-size: 11px; color: var(--text-3); margin-top: 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; }
+    .insight-delta { font-family: var(--mono); font-weight: 600; }
+    .insight-delta.up   { color: var(--red); }   /* more spending = bad, so up is red */
+    .insight-delta.down { color: var(--green); }
+    .insight-cat-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+    /* ── Recurring payments list ── */
+    .recur-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .recur-row:last-child { border-bottom: none; }
+    .recur-name { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+    .recur-months { font-size: 11px; color: var(--text-3); font-family: var(--mono); white-space: nowrap; }
+    .recur-avg { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-2); text-align: right; white-space: nowrap; }
+    .recur-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--accent-dim); color: var(--accent); white-space: nowrap; }
+    .recur-total-row { border-bottom: none; border-top: 1px solid var(--border-2); margin-top: 4px; padding-top: 14px; }
+
+    /* ── Biggest expenses (individual charges + installment plans) ── */
+    .expense-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .expense-row:last-child { border-bottom: none; }
+    .expense-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+    .expense-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .expense-meta span { font-family: var(--mono); color: var(--text-2); font-weight: 600; }
+    .expense-amount { font-family: var(--mono); font-size: 14px; font-weight: 700; text-align: right; white-space: nowrap; }
+    .expense-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--red-dim); color: var(--red); white-space: nowrap; }
+
+    /* ── Uncategorized review + inline categorize editor ── */
+    .uncat-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .uncat-row:last-child { border-bottom: none; }
+    .uncat-name { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+    .uncat-meta { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
+    .uncat-actions { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+    .cat-add-btn { font-size: 11px; font-weight: 600; color: var(--text-3); background: transparent; border: 1px dashed var(--border-2); border-radius: 99px; padding: 4px 12px; cursor: pointer; transition: all var(--transition); font-family: var(--font); white-space: nowrap; }
+    .cat-add-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .cat-editor { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; grid-column: 1 / -1; }
+    .cat-editor-input { flex: 1; min-width: 160px; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 11px; padding: 6px 8px; outline: none; }
+    .cat-editor-input:focus { border-color: var(--accent); }
+    .cat-editor-select { background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; color: var(--text); font-family: var(--font); font-size: 12px; padding: 6px 8px; outline: none; cursor: pointer; }
+
+    .search-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px;
+      color: var(--text); font-family: var(--font); font-size: 13px; padding: 9px 12px; outline: none;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-result-meta-card { color: var(--text-2); font-weight: 600; }
+    .cat-editor-save, .cat-editor-cancel { width: 26px; height: 26px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cat-editor-save { background: var(--green-dim); color: var(--green); }
+    .cat-editor-cancel { background: var(--border); color: var(--text-3); }
+
+    /* ── Statement list ── */
+    .stmt-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .card-summary-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+      padding: 16px 0 20px; margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    @media (max-width: 700px) { .card-summary-row { grid-template-columns: 1fr; } }
+
+    .utilities-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    @media (max-width: 700px) { .utilities-grid { grid-template-columns: 1fr; } }
+    .utilities-grid > .empty { grid-column: 1 / -1; }
+    .utility-tile {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+    }
+    .utility-tile-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+    .utility-tile-name { font-size: 12px; font-weight: 600; color: var(--text-2); }
+    .utility-tile-avg { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
+
+    .stmt-row {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px 20px;
+      display: grid; grid-template-columns: 140px 1fr 1fr auto;
+      align-items: center; gap: 16px;
+      transition: border-color var(--transition);
+    }
+    .stmt-row:hover { border-color: var(--border-2); }
+    .stmt-actions { display: flex; align-items: center; gap: 6px; }
+
+    .stmt-date { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text-2); }
+    .stmt-amounts { display: flex; flex-direction: column; gap: 2px; }
+    .stmt-amount-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+    .stmt-amount-val { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+    .stmt-count { font-size: 12px; color: var(--text-3); }
+    .stmt-count span { font-family: var(--mono); color: var(--text-2); font-weight: 600; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); border: none; font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity var(--transition); white-space: nowrap; text-decoration: none; }
+    .btn:hover { opacity: .82; }
+    .btn-primary { background: var(--accent-btn); color: #fff; }
+    .btn-ghost   { background: var(--border); color: var(--text-2); }
+    .btn-icon    { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-2); background: transparent; color: var(--text-2); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; transition: background var(--transition), color var(--transition); text-decoration: none; }
+    .btn-icon:hover { background: var(--accent-dim); border-color: rgba(79,126,247,.4); color: var(--accent); }
+    .btn-del { background: transparent; border: none; color: var(--text-3); cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 5px; transition: background var(--transition), color var(--transition); }
+    .btn-del:hover { background: var(--red-dim); color: var(--red); }
+
+    /* ── Empty state ── */
+    .empty { padding: 48px 0; text-align: center; color: var(--text-3); }
+    .empty-icon { font-size: 32px; margin-bottom: 10px; }
+    .empty-text { font-size: 13px; }
+
+    /* ── Loading overlay ── */
+    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 14px; transition: opacity .3s; }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 28px; right: 28px; z-index: 1000; display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .25s, transform .25s; }
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    .toast.error { border-color: var(--red); }
+
+    /* ── Upload progress overlay ── */
+    .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; }
+    .backdrop.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius-lg); padding: 28px; width: 440px; max-width: 95vw; animation: modal-in .22s cubic-bezier(.4,0,.2,1); }
+    @keyframes modal-in { from { opacity:0; transform:translateY(12px) scale(.97); } to { opacity:1; transform:none; } }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+    .parse-result { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-top: 4px; }
+    .parse-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+    .parse-row:last-child { border-bottom: none; }
+    .parse-label { color: var(--text-3); }
+    .parse-val   { font-family: var(--mono); font-weight: 600; }
+
+    /* ── Card color accents ── */
+
+    @media (max-width: 900px) {
+      .insight-grid { grid-template-columns: 1fr 1fr; }
+      .stmt-row { grid-template-columns: 1fr 1fr auto; }
+      .stmt-row .stmt-count { display: none; }
+      .main { padding: 16px 14px 60px; }
+      .topbar { padding: 0 14px; }
+    }
+
+    @media (max-width: 560px) {
+      .insight-grid { grid-template-columns: 1fr; }
+      .stmt-row { grid-template-columns: 1fr; gap: 8px; }
+      .stmt-actions { justify-content: flex-end; }
+      .recur-row { grid-template-columns: 1fr; gap: 4px; }
+      .recur-avg { text-align: left; }
+    }
+
+    /* Nav on its own row below 960px: with 5 nav items (Análisis added) plus
+       the upload button and lang toggle, one row no longer fits there. */
+    @media (max-width: 960px) {
+      .topbar { flex-wrap: wrap; row-gap: 8px; height: auto; padding: 10px 14px; }
+      .nav-links { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos…</div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="icon">💳</div>
+    <span data-i18n="Transacciones">Transacciones</span>
+  </div>
+  <nav class="nav-links">
+    <a class="nav-btn" href="/" data-i18n="Presupuesto">Presupuesto</a>
+    <a class="nav-btn active" href="/transactions" data-i18n="Transacciones">Transacciones</a>
+    <a class="nav-btn" href="/debit-account" data-i18n="🏦 Cuenta de Débito">🏦 Cuenta de Débito</a>
+    <a class="nav-btn" href="/cash-flow">📊 <span data-i18n="Análisis">Análisis</span></a>
+  </nav>
+  <button class="btn btn-ghost" style="margin-left:12px" onclick="openUploadModal()" data-i18n="📄 Cargar estado de cuenta">📄 Cargar estado de cuenta</button>
+  <button class="btn-icon lang-toggle" onclick="toggleLang()" style="margin-left:8px" aria-label="Switch language">EN</button>
+</header>
+
+<!-- Upload — a monthly action, not something worth full-width top-of-page
+     real estate every time this page loads. Lives in a modal behind a small
+     topbar trigger instead; the underlying upload/email-search/drag-drop
+     logic is unchanged, only where its trigger UI lives moved. -->
+<div class="backdrop" id="upload-backdrop" onclick="if (event.target === this) closeUploadModal()" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
+  <div class="modal">
+    <div class="modal-title" id="upload-modal-title" data-i18n="Cargar Estado de Cuenta">Cargar Estado de Cuenta</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="email-search-btn" onclick="searchEmailStatements()" data-i18n="📧 Buscar en correo">📧 Buscar en correo</button>
+      <span style="font-size:11px;color:var(--text-3)" data-i18n="Busca y descarga automáticamente los estados de cuenta nuevos del banco en tu correo">Busca y descarga automáticamente los estados de cuenta nuevos del banco en tu correo</span>
+    </div>
+    <span id="email-search-status" style="font-size:11px;color:var(--text-3);display:block;margin-top:8px"></span>
+    <details style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <summary style="cursor:pointer;font-size:11px;color:var(--text-3);user-select:none" data-i18n="O sube un archivo manualmente (PDF / .md)">O sube un archivo manualmente (PDF / .md)</summary>
+      <div class="upload-zone" id="upload-zone" style="margin-top:14px">
+        <input type="file" id="file-input" accept=".pdf,.md,.txt" onchange="handleFileSelect(this.files[0])" />
+        <div class="upload-icon">📄</div>
+        <div class="upload-label" data-i18n="Arrastra tu estado de cuenta (PDF o .md) aquí o haz clic para seleccionar">Arrastra tu estado de cuenta (PDF o .md) aquí o haz clic para seleccionar</div>
+        <div class="upload-sub" data-i18n="Formato: PDF del estado de cuenta, o .md ya convertido">Formato: PDF del estado de cuenta, o .md ya convertido</div>
+      </div>
+    </details>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeUploadModal()" data-i18n="Cerrar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+
+  <!-- Compact status line — a sanity check ("did my upload register"), not
+       content worth a full tile row. -->
+  <div class="upload-kpi-line">
+    <span id="kpi-cards">—</span> <span data-i18n="tarjeta(s)">tarjeta(s)</span> · <span id="kpi-stmts">—</span> <span data-i18n="estado(s)">estado(s)</span> · <span id="kpi-txs">—</span> <span data-i18n="transacción(es)">transacción(es)</span>
+  </div>
+
+  <!-- Validation banner — statements whose parsed charges don't reconcile
+       against their own printed "Pago de Contado". Not proof of a bug (see
+       /api/validate-statements docstring) — a "worth a look" flag. -->
+  <div id="validation-banner" style="display:none"></div>
+
+  <!-- Global transaction search — spans every card/statement regardless of
+       which tab is active, since "find every Amazon charge" isn't scoped to
+       one view the way the rest of the page is. -->
+  <div class="card" id="search-card" style="padding:16px 22px;margin-top:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span aria-hidden="true">🔍</span>
+      <input type="text" id="search-input" class="search-input"
+             placeholder="Buscar transacciones por comercio (ej: Amazon, Uber)…"
+             data-i18n-placeholder="Buscar transacciones por comercio (ej: Amazon, Uber)…"
+             oninput="onSearchInput(this.value)" aria-label="Buscar transacciones">
+    </div>
+    <div id="search-results" style="display:none;margin-top:14px"></div>
+  </div>
+
+  <!-- One global period (from → to, over the data's own corte months) for
+       the insights, trend, category and recurring views. -->
+  <div class="period-bar" id="period-bar">
+    <span data-i18n="Período">Período</span>
+    <select class="cat-editor-select" id="range-from" onchange="setRange(this.value, document.getElementById('range-to').value)" aria-label="Desde"></select>
+    <span aria-hidden="true">→</span>
+    <select class="cat-editor-select" id="range-to" onchange="setRange(document.getElementById('range-from').value, this.value)" aria-label="Hasta"></select>
+    <div class="tabs" id="range-presets" style="margin-bottom:0">
+      <button class="tab" data-preset="all" onclick="setRangePreset(null)" data-i18n="Todo el período">Todo el período</button>
+      <button class="tab" data-preset="12" onclick="setRangePreset(12)" data-i18n="Últimos 12 meses">Últimos 12 meses</button>
+      <button class="tab" data-preset="6" onclick="setRangePreset(6)" data-i18n="Últimos 6 meses">Últimos 6 meses</button>
+      <button class="tab" data-preset="3" onclick="setRangePreset(3)" data-i18n="Últimos 3 meses">Últimos 3 meses</button>
+    </div>
+  </div>
+
+  <!-- Top-level view tabs -->
+  <div class="tabs" id="view-tabs" role="tablist" style="margin-top:20px">
+    <button class="tab active" role="tab" id="tab-resumen" aria-selected="true" aria-controls="view-resumen" data-view="resumen" onclick="switchView('resumen')" data-i18n="Resumen">Resumen</button>
+    <button class="tab" role="tab" id="tab-categorias" aria-selected="false" aria-controls="view-categorias" data-view="categorias" onclick="switchView('categorias')" data-i18n="Categorías">Categorías</button>
+    <button class="tab" role="tab" id="tab-suscripciones" aria-selected="false" aria-controls="view-suscripciones" data-view="suscripciones" onclick="switchView('suscripciones')" data-i18n="Suscripciones">Suscripciones</button>
+    <button class="tab" role="tab" id="tab-uncat" aria-selected="false" aria-controls="view-uncat" data-view="uncat" onclick="switchView('uncat')" data-i18n="Por Categorizar">Por Categorizar</button>
+    <button class="tab" role="tab" id="tab-tarjeta" aria-selected="false" aria-controls="view-tarjeta" data-view="tarjeta" onclick="switchView('tarjeta')" data-i18n="Por Tarjeta">Por Tarjeta</button>
+  </div>
+
+  <!-- Resumen: the daily-glance view — trajectory at two levels of detail -->
+  <div id="view-resumen" role="tabpanel" aria-labelledby="tab-resumen" tabindex="0">
+    <div class="section-label" data-i18n="Resumen del Período">Resumen del Período</div>
+    <div class="insight-grid" id="insight-grid"></div>
+
+    <div class="section-label" data-i18n="Tendencia de Gastos Mensuales">Tendencia de Gastos Mensuales</div>
+    <div class="card" id="trend-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Gasto por Tarjeta y Total">Gasto por Tarjeta y Total</span>
+        <span style="font-size:11px;color:var(--text-3)" data-i18n="Cada punto es un estado de cuenta mensual">Cada punto es un estado de cuenta mensual</span>
+      </div>
+      <div id="trend-body">
+        <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin estados de cuenta para graficar aún.">Sin estados de cuenta para graficar aún.</div></div>
+      </div>
+    </div>
+
+    <div class="spend-card" id="spend-summary" style="margin-top:16px"></div>
+  </div>
+
+  <!-- Categorías: breakdown/analysis views of the same spend -->
+  <div id="view-categorias" role="tabpanel" aria-labelledby="tab-categorias" tabindex="0" style="display:none">
+    <div class="section-label" data-i18n="Gasto por Categoría">Gasto por Categoría</div>
+    <div class="card" id="category-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Tipo de Gasto">Tipo de Gasto</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="tabs" style="margin-bottom:0">
+            <button class="tab active" data-catview="total" onclick="setCategoryView('total')" data-i18n="Total">Total</button>
+            <button class="tab"        data-catview="month" onclick="setCategoryView('month')" data-i18n="Por mes">Por mes</button>
+          </div>
+        </div>
+      </div>
+      <div id="category-scope-note" style="font-size:11px;color:var(--text-3);margin-top:-10px;margin-bottom:14px"></div>
+      <div id="category-body">
+        <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin transacciones para categorizar aún.">Sin transacciones para categorizar aún.</div></div>
+      </div>
+    </div>
+
+    <div class="section-label" data-i18n="Pagos Recurrentes">Pagos Recurrentes</div>
+    <div class="card" id="recurring-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Comercios en la mayoría de los meses">Comercios en la mayoría de los meses</span>
+        <span style="font-size:11px;color:var(--text-3)" data-i18n="Suscripciones, servicios y gastos habituales">Suscripciones, servicios y gastos habituales</span>
+      </div>
+      <div id="recurring-body">
+        <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin datos suficientes aún.">Sin datos suficientes aún.</div></div>
+      </div>
+    </div>
+
+    <!-- Servicios Básicos — a curated set of utility/service merchants (water,
+         electricity, internet, fuel), each with its own monthly trendline.
+         "Pagos Recurrentes" above already lists these among other recurring
+         merchants, but as one flat average each — a trend needs its own line
+         per merchant, which is what this section is for. -->
+    <div class="section-label" data-i18n="Servicios Básicos">Servicios Básicos</div>
+    <div class="card" id="utilities-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Tendencia por Servicio">Tendencia por Servicio</span>
+        <span style="font-size:11px;color:var(--text-3)" data-i18n="Agua, electricidad, internet, combustible">Agua, electricidad, internet, combustible</span>
+      </div>
+      <div id="utilities-body" class="utilities-grid">
+        <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin datos suficientes aún.">Sin datos suficientes aún.</div></div>
+      </div>
+    </div>
+
+    <!-- Biggest expenses — individual charges ranked by size, PLUS installment
+         plans ranked by their full purchase price (not the monthly slice). A
+         $123.45/mes cuota looks small alone, but if it's 2 of 3 payments,
+         the actual purchase was ~$370 — that's what belongs in a "biggest
+         expenses" list, not the monthly installment amount. -->
+    <div class="section-label" data-i18n="Gastos Más Grandes">Gastos Más Grandes</div>
+    <div class="card" id="big-expense-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Compras Individuales y a Plazo">Compras Individuales y a Plazo</span>
+        <span style="font-size:11px;color:var(--text-3)" data-i18n="Últimos 6 meses · cuotas mostradas por el valor total de la compra">Últimos 6 meses · cuotas mostradas por el valor total de la compra</span>
+      </div>
+      <div id="big-expense-body">
+        <div class="empty" style="padding:32px 0"><div class="empty-text" data-i18n="Sin transacciones aún.">Sin transacciones aún.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suscripciones: streaming/services merchants still being charged -->
+  <div id="view-suscripciones" role="tabpanel" aria-labelledby="tab-suscripciones" tabindex="0" style="display:none">
+    <div class="card" id="subscriptions-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Suscripciones Activas">Suscripciones Activas</span>
+        <span style="font-size:11px;color:var(--text-3)" data-i18n="Streaming y servicios: ≥2 meses en el período y cobrados en su último mes">Streaming y servicios: ≥2 meses en el período y cobrados en su último mes</span>
+      </div>
+      <div id="subscriptions-body"></div>
+    </div>
+  </div>
+
+  <!-- Por Categorizar: an action queue, not analytics — the dynamic "check
+       for these" list. Every merchant the keyword rules couldn't match, one
+       row each (not one row per transaction), so categorizing it here
+       applies to every past and future transaction from that merchant. -->
+  <div id="view-uncat" role="tabpanel" aria-labelledby="tab-uncat" tabindex="0" style="display:none">
+    <div class="card" id="uncat-card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="Comercios por Categorizar">Comercios por Categorizar</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:11px;color:var(--text-3)" id="uncat-count-label"></span>
+          <button class="cat-add-btn" onclick="openNewCategory()" data-i18n="+ Nueva categoría">+ Nueva categoría</button>
+        </div>
+      </div>
+      <div id="uncat-body">
+        <div class="empty" style="padding:24px 0"><div class="empty-text" data-i18n="Sin transacciones aún.">Sin transacciones aún.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Por Tarjeta: archive/verification browsing, lowest-frequency check -->
+  <div id="view-tarjeta" role="tabpanel" aria-labelledby="tab-tarjeta" tabindex="0" style="display:none">
+    <div id="cards-section">
+      <div class="empty">
+        <div class="empty-icon">💳</div>
+        <div class="empty-text"><span data-i18n="No hay estados de cuenta cargados aún.">No hay estados de cuenta cargados aún.</span><br/><span data-i18n="Sube tu primer archivo arriba.">Sube tu primer archivo arriba.</span></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Parse preview modal -->
+<div class="backdrop" id="preview-backdrop" onclick="if (event.target === this) cancelUpload()" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+  <div class="modal">
+    <div class="modal-title" id="preview-title" data-i18n="Vista previa del estado de cuenta">Vista previa del estado de cuenta</div>
+    <div id="preview-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cancelUpload()" data-i18n="Cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="confirm-upload-btn" onclick="confirmUpload()" data-i18n="Guardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category drill-down — clicking a bar in "Gasto por Categoría" opens this
+     with the exact merchant-by-card breakdown that makes up that total. -->
+<div class="backdrop" id="category-detail-backdrop" onclick="if (event.target === this) closeCategoryDetail()" role="dialog" aria-modal="true" aria-labelledby="category-detail-title">
+  <div class="modal" style="width:560px">
+    <div class="modal-title" id="category-detail-title" data-i18n="Detalle de Categoría">Detalle de Categoría</div>
+    <div id="category-detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeCategoryDetail()" data-i18n="Cerrar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- New category — id is the stable key rules/analytics store; label and
+     color are what the charts show. -->
+<div class="backdrop" id="new-category-backdrop" onclick="if (event.target === this) closeNewCategory()" role="dialog" aria-modal="true" aria-labelledby="new-category-title">
+  <div class="modal">
+    <div class="modal-title" id="new-category-title" data-i18n="Nueva categoría">Nueva categoría</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <label style="font-size:11px;color:var(--text-3)"><span data-i18n="Nombre">Nombre</span>
+        <input type="text" class="cat-editor-input" id="new-cat-label" maxlength="40" style="width:100%;margin-top:4px;font-family:var(--font);font-size:13px" />
+      </label>
+      <label style="font-size:11px;color:var(--text-3)"><span data-i18n="Id (minúsculas, números o _)">Id (minúsculas, números o _)</span>
+        <input type="text" class="cat-editor-input" id="new-cat-id" maxlength="30" oninput="this.value = this.value.toLowerCase()" pattern="[a-z][a-z0-9_]{1,29}" style="width:100%;margin-top:4px" />
+      </label>
+      <label style="font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:10px"><span data-i18n="Color">Color</span>
+        <input type="color" id="new-cat-color" value="#4f7ef7" />
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNewCategory()" data-i18n="Cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="new-cat-save" onclick="saveNewCategory()" data-i18n="Crear">Crear</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-icon">✓</span>&nbsp;<span id="toast-msg"></span></div>
+
+<script src="/static/i18n.js"></script>
+<script>const UTILITY_PROVIDERS = {{ utility_providers|tojson }}; addTranslations(Object.fromEntries(UTILITY_PROVIDERS.map(p => [p.label, p.label_en])));</script>
+<script src="/static/spend.js"></script>
+<script>
+'use strict';
+
+Chart.register(ChartDataLabels);
+
+/* ── State ── */
+let pendingParsed = null;   // result from server before user confirms
+let CSRF_TOKEN = null;
+let currentView = 'resumen';   // 'resumen' | 'categorias' | 'suscripciones' | 'uncat' | 'tarjeta'
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* ── Boot ── */
+async function boot() {
+  applyStaticAll();
+  onLangChange(() => { render(); checkStatementValidation(); });
+  try {
+    const tokRes = await fetch('/api/csrf-token');
+    CSRF_TOKEN = (await tokRes.json()).csrf_token;
+
+    const categories = await (await fetch('/api/categories')).json();
+    const statements = await (await fetch('/api/statements')).json();
+    loadSpend({ statements, categories });
+
+    // Restore whichever sub-view (and, for "Por Tarjeta", which card tab) the
+    // user was on before following a "Ver detalle" link to a statement — set
+    // BEFORE render() so renderCards()'s activeKey lookup and switchView()'s
+    // default both pick it up on the very first render, not a second one.
+    const wantView = sessionStorage.getItem('lastView');
+    if (wantView) {
+      sessionStorage.removeItem('lastView');
+      currentView = wantView;
+      const wantCard = sessionStorage.getItem('lastCardKey');
+      if (wantCard) {
+        sessionStorage.removeItem('lastCardKey');
+        document.getElementById('cards-section').dataset.activeKey = wantCard;
+      }
+    }
+
+    render();
+    checkStatementValidation();
+  } catch(e) {
+    toast('⚠', 'Error al cargar datos', true);
+  } finally {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 400);
+  }
+}
+
+/* ── Top-level view tabs ──
+   Chart.js sizes a canvas against its container's width at the moment the
+   chart is created — a chart built while its tab is display:none gets a
+   0-width canvas and renders blank. So the trend/category charts aren't
+   rendered unconditionally in render(); instead switchView() (re)renders
+   whichever chart belongs to the tab that's actually becoming visible,
+   both on every tab click and every data refresh (via render() below). */
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('#view-tabs .tab').forEach(t => {
+    const active = t.dataset.view === view;
+    t.classList.toggle('active', active);
+    t.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  ['resumen', 'categorias', 'suscripciones', 'uncat', 'tarjeta'].forEach(v => {
+    document.getElementById(`view-${v}`).style.display = v === view ? '' : 'none';
+  });
+  if (view === 'resumen')    renderSpendTrend();
+  if (view === 'categorias') { renderCategoryView(); renderUtilitiesTrend(); }
+  if (view === 'tarjeta')    renderCards();
+}
+
+/* ── Statement validation banner ──
+   Flags statements whose parsed charges don't reconcile against their own
+   printed "Pago de Contado" — not proof of a bug, just "worth a look" (see
+   parser.validate_statement's docstring for why a gap can be legitimate:
+   untracked interest/insurance fees, or a statement that carried a balance
+   or received a mid-cycle payment). */
+async function checkStatementValidation() {
+  const banner = document.getElementById('validation-banner');
+  try {
+    const res = await fetch('/api/validate-statements');
+    const { flagged } = await res.json();
+    if (!flagged.length) { banner.style.display = 'none'; return; }
+
+    const rows = flagged.map(f => `
+      <div class="expense-row" style="cursor:pointer" onclick="sessionStorage.setItem('lastView',currentView);sessionStorage.setItem('lastCardKey','${f.card_key}');window.location.href='/transactions/${f.statement_id}'">
+        <div>
+          <div class="expense-name">${esc(f.card_name)} · ${esc(f.fecha_corte)}</div>
+          <div class="expense-meta">
+            ${tr('calculado')} ${money(f.computed_usd)} ${tr('vs impreso')} ${money(f.printed_usd)} (${tr('dif')} ${money(f.diff_usd)})
+          </div>
+        </div>
+        <div class="expense-amount" style="color:var(--amber)">${tr('Revisar →')}</div>
+      </div>`).join('');
+
+    banner.innerHTML = `
+      <div class="card" style="padding:14px 22px;border-color:var(--amber)">
+        <details>
+          <summary style="cursor:pointer;font-size:12px;color:var(--amber);user-select:none">
+            ⚠ ${flagged.length} ${tr('estado(s) de cuenta no cuadran con su total impreso — clic para revisar')}
+          </summary>
+          <div style="margin-top:12px">${rows}</div>
+        </details>
+      </div>`;
+    banner.style.display = '';
+  } catch (e) {
+    banner.style.display = 'none';
+  }
+}
+
+/* ── Global transaction search ──
+   Spans every card and every statement, unlike the rest of the page which
+   is scoped to whichever tab is active — "every Amazon charge" isn't a
+   "Resumen" or "Por Tarjeta" question, it's a cross-cutting one. */
+const SEARCH_RESULTS_LIMIT = 100;
+
+function searchTransactions(query) {
+  const q = query.trim().toUpperCase();
+  if (!q) return [];
+  const results = [];
+  Object.entries(S).forEach(([cardKey, card]) => {
+    card.statements.forEach(st => {
+      st.transactions.forEach(t => {
+        if (t.descripcion.toUpperCase().includes(q)) {
+          results.push({ cardKey, cardName: card.card_name, statementId: st.id, t });
+        }
+      });
+    });
+  });
+  return results.sort((a, b) => b.t.fecha.localeCompare(a.t.fecha));
+}
+
+function onSearchInput(value) {
+  const box = document.getElementById('search-results');
+  const results = searchTransactions(value);
+
+  if (!value.trim()) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+
+  if (!results.length) {
+    box.innerHTML = `<div class="empty" style="padding:20px 0"><div class="empty-text">${tr('Sin resultados para')} "${esc(value.trim())}".</div></div>`;
+    return;
+  }
+
+  const shown = results.slice(0, SEARCH_RESULTS_LIMIT);
+  const rows = shown.map(r => `
+    <div class="expense-row" style="cursor:pointer" onclick="window.location.href='/transactions/${r.statementId}'">
+      <div>
+        <div class="expense-name">
+          <span class="insight-cat-dot" style="background:${catColor(categorize(r.t) || '_uncat')}"></span>
+          ${esc(r.t.descripcion)}
+        </div>
+        <div class="expense-meta">
+          <span class="search-result-meta-card">${esc(r.cardName)}</span> · ${esc(r.t.fecha)} · ${esc(catLabel(categorize(r.t) || '_uncat'))}
+        </div>
+      </div>
+      <div class="expense-amount">${money(txUsd(r.t))}</div>
+    </div>`).join('');
+
+  const countLabel = results.length > SEARCH_RESULTS_LIMIT
+    ? `${tr('Mostrando')} ${SEARCH_RESULTS_LIMIT} ${tr('de')} ${results.length} ${tr('resultados')}`
+    : `${results.length} ${tr('resultado(s)')}`;
+
+  box.innerHTML = `
+    <div style="font-size:11px;color:var(--text-3);margin-bottom:10px">${countLabel}</div>
+    <div style="max-height:60vh;overflow-y:auto">${rows}</div>`;
+}
+
+/* ── Render ── */
+function render() {
+  identifySupersededCargos();
+  renderPeriodControls();
+  renderKPIs();
+  renderInsights();
+  renderUncategorized();
+  renderRecurring();
+  renderSubscriptions();
+  renderBigExpenses();
+  renderCards();
+  switchView(currentView);   // re-renders whichever chart is on the active tab
+}
+
+/* ── Global period ──
+   Port of the APK's StatementAnalytics.monthRange: an inclusive from→to
+   window over the data's own corte months (never a calendar cutoff). A null
+   bound is open-ended; both null = no filter (null, not "every month", so
+   eachSpendTx's check stays a no-op). */
+let rangeFrom = null, rangeTo = null;
+
+function periodMonthsSet() {
+  if (rangeFrom == null && rangeTo == null) return null;
+  return new Set(allMonths().filter(m =>
+    (rangeFrom == null || m >= rangeFrom) && (rangeTo == null || m <= rangeTo)));
+}
+
+function setRange(from, to) {
+  rangeFrom = from || null;
+  rangeTo = to || null;
+  if (rangeFrom && rangeTo && rangeFrom > rangeTo) [rangeFrom, rangeTo] = [rangeTo, rangeFrom];
+  render();
+}
+
+function setRangePreset(n) {
+  const months = allMonths();
+  if (n == null || !months.length) setRange(null, null);
+  else setRange(months.slice(-n)[0], months[months.length - 1]);
+}
+
+function renderPeriodControls() {
+  const months = allMonths();
+  // A bound whose statement was since deleted still filters — keep it visible.
+  const choices = [...new Set([...months, rangeFrom, rangeTo].filter(Boolean))].sort();
+  const opts = (selected, emptyLabel) => `<option value="">${esc(emptyLabel)}</option>` +
+    choices.map(m => `<option value="${m}" ${m === selected ? 'selected' : ''}>${m}</option>`).join('');
+  document.getElementById('range-from').innerHTML = opts(rangeFrom, tr('Desde el inicio'));
+  document.getElementById('range-to').innerHTML = opts(rangeTo, tr('Hasta el final'));
+  const last = months[months.length - 1];
+  document.querySelectorAll('#range-presets .tab').forEach(b => {
+    const p = b.dataset.preset;
+    const on = p === 'all'
+      ? rangeFrom == null && rangeTo == null
+      : months.length >= +p && rangeFrom === months.slice(-p)[0] && rangeTo === last;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on);
+  });
+}
+
+function catLabel(cid) {
+  if (cid === '_uncat') return tr('Sin categoría');
+  return catLabelFor(cid, CATEGORIES[cid]?.label || cid);
+}
+function catColor(cid) {
+  // esc(): the result lands in style="" attributes; a hex color passes unchanged.
+  return esc(cid === '_uncat' ? UNCATEGORIZED_COLOR : (CATEGORIES[cid]?.color || UNCATEGORIZED_COLOR));
+}
+
+// category_id -> { month -> usd }, plus per-category totals and month list
+function computeCategoryByMonth(monthsFilter) {
+  const byCat = {};
+  eachSpendTx((t, month) => {
+    const cid = categorize(t) || '_uncat';
+    (byCat[cid] ??= {})[month] = (byCat[cid][month] || 0) + txUsd(t);
+  }, monthsFilter);
+  const totals = Object.fromEntries(
+    Object.entries(byCat).map(([cid, mm]) => [cid, Object.values(mm).reduce((a, b) => a + b, 0)])
+  );
+  return { months: monthsFilter ? [...monthsFilter].sort() : allMonths(), byCat, totals };
+}
+
+// Recurring = a merchant seen in most months (≥70%, min 3) — i.e. clearly
+// habitual (subscriptions, utilities, groceries, fuel), not a lumpy one-off
+// that merely happened twice. A high-value but infrequent merchant (e.g. a
+// couple of big Amazon months) is deliberately NOT counted as recurring.
+// Returns the list sorted by monthly average, plus the recurring/one-off split.
+//
+// `monthsFilter`, when given, scopes the *displayed* $ amounts and month
+// counts to that window — but which merchants COUNT as recurring is always
+// decided from all-time data (recurrence is a property of the relationship,
+// not of whatever window happens to be selected; a merchant seen in 15 of 20
+// months is still "recurring" even when the display window only covers 3).
+function computeRecurring(monthsFilter) {
+  const allMonthsList = allMonths();
+  const threshold = Math.max(3, Math.ceil(allMonthsList.length * 0.7));
+  const allTimeMerchants = computeMerchants();
+  const recurringNames = new Set(
+    Object.entries(allTimeMerchants).filter(([, r]) => r.months.size >= threshold).map(([name]) => name)
+  );
+
+  const windowMerchants = monthsFilter ? computeMerchants(monthsFilter) : allTimeMerchants;
+  const windowMonthsTotal = monthsFilter ? monthsFilter.size : allMonthsList.length;
+
+  // Refunds repeat monthly too (rebates) but aren't recurring charges.
+  const recurring = Object.entries(windowMerchants)
+    .filter(([name, r]) => recurringNames.has(name) && r.cid !== 'refund')
+    .map(([name, r]) => ({ name, ...r, monthsCount: r.months.size, avg: r.usd / (r.months.size || 1) }))
+    .sort((a, b) => b.avg - a.avg);
+  const recurringTotal = recurring.reduce((s, r) => s + r.usd, 0);
+  const grandTotal = Object.values(windowMerchants).reduce((s, r) => s + r.usd, 0);
+  return { recurring, recurringTotal, variableTotal: grandTotal - recurringTotal, threshold, monthsTotal: windowMonthsTotal };
+}
+
+// The single largest expense charged to one card over the last `monthsBack`
+// corte months of the data (the APK's cardHighlights) — same cargo/cuota
+// dedup as computeBigExpenses below: a converted "Compras a Plazo" purchase
+// is ranked by its full plan price, not its own cargo line or one monthly
+// slice. `kind` distinguishes a real merchant charge from the synthetic "Plan
+// a plazos" label for an installment plan, so the caller knows not to run the
+// latter through normalizeMerchant() (there's no real description to clean up).
+function computeCardHighestExpense(cardKey, monthsBack = 6) {
+  const card = S[cardKey];
+  if (!card) return null;
+  const recentMonths = new Set(allMonths().slice(-monthsBack));
+
+  let best = null;
+
+  card.statements.forEach(st => {
+    if (!recentMonths.has((st.fecha_corte || '').slice(0, 7))) return;
+    st.transactions.forEach(t => {
+      if (t.tipo !== 'cargo' || !isSpend(t)) return;
+      const usd = txUsd(t);
+      if (usd > 0 && (!best || usd > best.usd)) {
+        best = { usd, descripcion: t.descripcion, fecha: t.fecha, cid: categorize(t) || '_uncat', kind: 'cargo' };
+      }
+    });
+  });
+
+  collectInstallmentPlans(recentMonths, cardKey).forEach(p => {
+    const planUsd = p.monthlyUsd * p.total;
+    if (!best || planUsd > best.usd) {
+      best = { usd: planUsd, descripcion: 'Plan a plazos', fecha: p.fecha, cid: p.cid, kind: 'cuota-plan' };
+    }
+  });
+
+  return best;
+}
+
+// Biggest expenses over the last N months — individual cargo charges ranked
+// by their own amount, PLUS installment ("cuota") plans ranked by their full
+// purchase price (monthly × total cuotas), not the monthly slice. A cuota
+// line for $123.45 looks unremarkable alone; if the description says
+// "CUOTA:02/03" it's 2 of 3 payments on a purchase whose real price is
+// $123.45 × 3 ≈ $370 — that's the number that belongs in a "biggest
+// expenses" ranking.
+//
+// Plans are reconstructed by collectInstallmentPlans() (no stable plan id
+// exists); each is shown once, using its most recent occurrence for progress.
+function computeBigExpenses(monthsBack = 6) {
+  const months = allMonths();
+  const recentMonths = new Set(months.slice(-monthsBack));
+
+  const cargoEntries = [];
+
+  Object.values(S).forEach(card => {
+    card.statements.forEach(st => {
+      const month = (st.fecha_corte || '').slice(0, 7);
+      if (!recentMonths.has(month)) return;
+
+      st.transactions.forEach(t => {
+        // isSpend() excludes a cargo line that's really the same purchase
+        // as a "Compras a Plazo" plan's first installment — see
+        // identifySupersededCargos(). Without this, a deferred purchase
+        // would show up twice: once as the plan, once as its own cargo.
+        if (t.tipo !== 'cargo' || !isSpend(t)) return;
+        cargoEntries.push({
+          kind: 'cargo', cardName: card.card_name, fecha: t.fecha,
+          descripcion: t.descripcion, usd: txUsd(t),
+          cid: categorize(t) || '_uncat',
+        });
+      });
+    });
+  });
+
+  const cuotaEntries = collectInstallmentPlans(recentMonths).map(p => ({
+    kind: 'cuota', cardName: p.cardName, fecha: p.fecha,
+    descripcion: 'Compras a Plazo',
+    usd: p.monthlyUsd * p.total,               // ranked by the full purchase price
+    monthlyUsd: p.monthlyUsd, n: p.n, total: p.total, cid: p.cid,
+    paidUsd: p.monthlyUsd * p.n,
+    remainingUsd: p.monthlyUsd * (p.total - p.n),
+  }));
+
+  return [...cargoEntries, ...cuotaEntries]
+    .filter(e => e.usd > 0)
+    .sort((a, b) => b.usd - a.usd);
+}
+
+// A generalizable starting guess for a new keyword rule — cuts at the first
+// "*"/long-digit-run (order refs, phone numbers) so it matches future
+// transactions from the same merchant, not just this one exact line.
+function suggestKeyword(descripcion) {
+  return (descripcion || '')
+    .split('*')[0]
+    .replace(/\s+\d{4,}.*$/, '')
+    .replace(/[\\/]+$/, '')
+    .trim()
+    .toUpperCase();
+}
+
+function money(n) {
+  if (n === 0 || n == null) return '—';
+  return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderKPIs() {
+  const cards   = Object.keys(S).length;
+  const stmts   = Object.values(S).reduce((s, c) => s + c.statements.length, 0);
+  const txs     = Object.values(S).reduce((s, c) => s + c.statements.reduce((ss, st) => ss + st.transactions.length, 0), 0);
+
+  document.getElementById('kpi-cards').textContent  = cards || '—';
+  document.getElementById('kpi-stmts').textContent  = stmts || '—';
+  document.getElementById('kpi-txs').textContent    = txs   || '—';
+}
+
+/* ── Monthly spend trend (by card, one point per statement) ──
+   A lifetime sum across every statement ever loaded mixes months together
+   and isn't meaningful — a monthly trend per card (plus a combined total
+   line) is what actually shows spending behavior over time. */
+const CHART_PALETTE = ['#4f7ef7','#a78bfa','#2dd4a0','#f5a623','#f75c5c','#38bdf8','#f472b6','#facc15'];
+let spendChartInst = null;
+let cardTrendChartInst = null;
+
+function computeMonthlySpend(monthsFilter) {
+  const perCard = {};       // card_key -> { card_name, byMonth: { 'YYYY-MM': usdEquiv } }
+  const totalByMonth = {};  // 'YYYY-MM' -> usdEquiv summed across all cards
+
+  Object.entries(S).forEach(([key, card]) => {
+    const byMonth = {};
+    card.statements.forEach(st => {
+      const month = (st.fecha_corte || '').slice(0, 7);
+      if (!month || (monthsFilter && !monthsFilter.has(month))) return;
+      // cuota (installment) charges are real spend too — include them
+      // alongside cargo (isSpend also excludes a cargo line that's really
+      // the same purchase as a cuota plan's first installment — see
+      // identifySupersededCargos).
+      const spend = st.transactions.filter(isSpend);
+      const usdEquiv = spend.reduce((s, t) => s + txUsd(t), 0);
+      byMonth[month] = (byMonth[month] || 0) + usdEquiv;
+      totalByMonth[month] = (totalByMonth[month] || 0) + usdEquiv;
+    });
+    perCard[key] = { card_name: card.card_name, byMonth };
+  });
+
+  const months = [...new Set(Object.values(perCard).flatMap(c => Object.keys(c.byMonth)))].sort();
+  return { months, perCard, totalByMonth };
+}
+
+function renderSpendTrend() {
+  const { months, perCard, totalByMonth } = computeMonthlySpend(periodMonthsSet());
+  const body = document.getElementById('trend-body');
+
+  if (!months.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin estados de cuenta para graficar aún.')}</div></div>`;
+    document.getElementById('spend-summary').innerHTML = '';
+    if (spendChartInst) { spendChartInst.destroy(); spendChartInst = null; }
+    return;
+  }
+
+  body.innerHTML = `<div class="chart-container"><canvas id="spend-chart"></canvas></div>`;
+
+  const cardKeys  = Object.keys(perCard);
+  const datasets  = cardKeys.map((key, i) => ({
+    label:            perCard[key].card_name,
+    data:             months.map(m => perCard[key].byMonth[m] ?? null),
+    borderColor:      CHART_PALETTE[i % CHART_PALETTE.length],
+    backgroundColor:  'transparent',
+    tension:          0.35,
+    spanGaps:         true,
+    pointRadius:      months.length > 40 ? 2 : 4,
+    pointHoverRadius: 6,
+  }));
+  datasets.push({
+    label:            tr('Total'),
+    data:             months.map(m => totalByMonth[m] ?? null),
+    borderColor:      '#dde2f0',
+    borderWidth:      2.5,
+    borderDash:       [6, 4],
+    backgroundColor:  'transparent',
+    pointRadius:      0,
+    tension:          0.35,
+  });
+
+  if (spendChartInst) spendChartInst.destroy();
+  const ctx = document.getElementById('spend-chart').getContext('2d');
+  spendChartInst = new Chart(ctx, {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#8b93ab', font: { size: 11 }, boxWidth: 20, padding: 16 }
+        },
+        tooltip: {
+          backgroundColor: '#141929',
+          borderColor:     '#1e2438',
+          borderWidth:     1,
+          titleColor:      '#8b93ab',
+          bodyColor:       '#dde2f0',
+          callbacks: {
+            label: ctx => `  ${ctx.dataset.label}: ${ctx.raw == null ? '—' : money(ctx.raw)}`
+          }
+        },
+        // A value on every point across every card's monthly line would be
+        // unreadable clutter — this chart relies on the legend + tooltip instead.
+        datalabels: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#4a5168', font: { family: "'JetBrains Mono', monospace", size: 10 }, maxTicksLimit: 12 },
+          grid:  { color: '#1e2438' }
+        },
+        y: {
+          ticks: { color: '#4a5168', callback: v => '$' + v.toLocaleString('en-US'), font: { size: 11 } },
+          grid:  { color: '#1e2438' }
+        }
+      }
+    }
+  });
+
+  renderSpendSummary(months, perCard, totalByMonth);
+}
+
+// null = defaults to the latest month; set when the user picks a specific
+// one from the dropdown below, so it's not stuck showing only the last
+// statement's numbers.
+let spendSummaryMonth = null;
+
+function setSpendSummaryMonth(month) {
+  spendSummaryMonth = month;
+  const { months, perCard, totalByMonth } = computeMonthlySpend(periodMonthsSet());
+  renderSpendSummary(months, perCard, totalByMonth);
+}
+
+function renderSpendSummary(months, perCard, totalByMonth) {
+  const selected = (spendSummaryMonth && months.includes(spendSummaryMonth))
+    ? spendSummaryMonth : months[months.length - 1];
+  const options = months.map(m => `<option value="${m}" ${m === selected ? 'selected' : ''}>${m}</option>`).join('');
+  const rows = Object.values(perCard)
+    .filter(c => selected in c.byMonth)
+    .map(c => `
+      <div class="spend-row">
+        <span class="spend-label">${esc(c.card_name)}</span>
+        <span class="spend-val">${money(c.byMonth[selected])}</span>
+      </div>`).join('');
+
+  document.getElementById('spend-summary').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11px;color:var(--text-3)">Estado de cuenta</span>
+      <select class="cat-editor-select" onchange="setSpendSummaryMonth(this.value)">${options}</select>
+    </div>
+    ${rows}
+    <div class="spend-row total">
+      <span class="spend-label">Total</span>
+      <span class="spend-val">${money(totalByMonth[selected])}</span>
+    </div>`;
+}
+
+/* ── Spend by category ── */
+const UNCATEGORIZED_COLOR = '#5c6280';
+let categoryChartInst = null;
+let categoryView = 'total';   // 'total' (all-time ranked) | 'month' (stacked over time)
+
+function setCategoryView(view) {
+  categoryView = view;
+  document.querySelectorAll('#category-card .tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.catview === view));
+  renderCategoryView();
+}
+
+function renderCategoryView() {
+  // State the scope explicitly — the big-expenses card below is always
+  // "últimos 6 meses", whatever the global period says.
+  const note = document.getElementById('category-scope-note');
+  if (note) {
+    const monthsFilter = periodMonthsSet();
+    const months = monthsFilter ? [...monthsFilter].sort() : allMonths();
+    const n = months.length;
+    // The click-to-drill-down hint only applies to the "Total" bar chart —
+    // "Por mes" has no click handler, so showing the hint there would
+    // promise an interaction that silently does nothing.
+    const hint = categoryView === 'total' ? ' · ' + tr('clic en una barra para ver el detalle') : '';
+    const scopeLabel = monthsFilter
+      ? `${months[0]} → ${months[n - 1]} (${n} ${n === 1 ? tr('mes') : tr('meses')})`
+      : `${tr('Todos los estados de cuenta cargados')} (${n} ${n === 1 ? tr('mes') : tr('meses')})`;
+    note.textContent = n ? `${scopeLabel}${hint}` : '';
+  }
+  if (categoryView === 'month') renderCategoryByMonth();
+  else renderCategoryChart();
+}
+
+function computeCategorySpend(monthsFilter) {
+  const totals = {};  // category_id (or '_uncategorized') -> usdEquiv
+  eachSpendTx(t => {
+    const cid = categorize(t) || '_uncategorized';
+    totals[cid] = (totals[cid] || 0) + txUsd(t);
+  }, monthsFilter);
+  return totals;
+}
+
+// The drill-down behind a category total: every (card, merchant) pair that
+// fed into it, so "why is this number what it is" is always one click away
+// instead of only answerable by re-deriving it by hand. `monthsFilter` must
+// match whatever scope produced the total being drilled into, or the modal's
+// sum won't match the bar the user clicked.
+function computeCategoryMerchants(cid, monthsFilter) {
+  const rows = {};  // "card|merchant" -> { cardName, merchant, usd, n, dates: [] }
+  eachSpendTx((t, month, card) => {
+    if ((categorize(t) || '_uncat') !== cid) return;
+    const merchant = normalizeMerchant(t.descripcion);
+    const key = `${card.card_name}|${merchant}`;
+    const rec = (rows[key] ??= { cardName: card.card_name, merchant, usd: 0, n: 0, dates: [] });
+    rec.usd += txUsd(t);
+    rec.n += 1;
+    rec.dates.push(t.fecha);
+  }, monthsFilter);
+  return Object.values(rows).sort((a, b) => b.usd - a.usd);
+}
+
+function openCategoryDetail(cid) {
+  const merchants = computeCategoryMerchants(cid, periodMonthsSet());
+  const total = merchants.reduce((s, r) => s + r.usd, 0);
+
+  document.getElementById('category-detail-title').innerHTML =
+    `<span class="insight-cat-dot" style="background:${catColor(cid)}"></span> ${esc(catLabel(cid))}`;
+
+  const rowsHtml = merchants.map(r => {
+    const dates = [...new Set(r.dates)].sort();
+    const dateLabel = dates.length > 1 ? `${dates[0]} → ${dates[dates.length - 1]}` : dates[0];
+    return `
+      <div class="expense-row">
+        <div>
+          <div class="expense-name">${esc(r.merchant)}</div>
+          <div class="expense-meta">${esc(r.cardName)} · ${r.n} ${tr('cargo(s)')} · ${esc(dateLabel)}</div>
+        </div>
+        <div class="expense-amount">${money(r.usd)}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('category-detail-body').innerHTML = `
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:14px">
+      ${merchants.length} ${tr('comercio(s)')} · <strong style="color:var(--text)">${money(total)}</strong> ${tr('en total')}
+    </div>
+    <div style="max-height:50vh;overflow-y:auto">${rowsHtml}</div>`;
+
+  document.getElementById('category-detail-backdrop').classList.add('open');
+  // Match the upload-preview modal's focus behavior — a keyboard/screen-reader
+  // user opening this dialog should land inside it, not stay on the canvas.
+  setTimeout(() => document.querySelector('#category-detail-backdrop .btn-primary')?.focus(), 50);
+}
+
+function closeCategoryDetail() {
+  document.getElementById('category-detail-backdrop').classList.remove('open');
+}
+
+function renderCategoryChart() {
+  const totals = computeCategorySpend(periodMonthsSet());
+  const body = document.getElementById('category-body');
+  const entries = Object.entries(totals).filter(([, v]) => v > 0);
+
+  if (!entries.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin transacciones para categorizar aún.')}</div></div>`;
+    if (categoryChartInst) { categoryChartInst.destroy(); categoryChartInst = null; }
+    return;
+  }
+
+  // Real categories ranked by spend; "Sin categoría" always sits last in a
+  // neutral gray — it's an action prompt (uncategorized merchants), not a
+  // spending identity, so it never competes with the categorical palette.
+  const real          = entries.filter(([cid]) => cid !== '_uncategorized').sort((a, b) => b[1] - a[1]);
+  const uncategorized = entries.find(([cid]) => cid === '_uncategorized');
+  const rows = uncategorized ? [...real, uncategorized] : real;
+
+  const labels = rows.map(([cid]) => cid === '_uncategorized' ? tr('Sin categoría') : catLabelFor(cid, CATEGORIES[cid].label));
+  const colors = rows.map(([cid]) => cid === '_uncategorized' ? UNCATEGORIZED_COLOR : CATEGORIES[cid].color);
+  const values = rows.map(([, v]) => v);
+
+  // Height grows with the bar count instead of a fixed box, so labels never
+  // get cramped or leave awkward empty space as categories are added.
+  body.innerHTML = `<div class="category-chart-container" style="height:${rows.length * 40 + 24}px"><canvas id="category-chart"></canvas></div>`;
+
+  if (categoryChartInst) categoryChartInst.destroy();
+  const ctx = document.getElementById('category-chart').getContext('2d');
+  categoryChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data:               values,
+        backgroundColor:    colors,
+        borderRadius:       4,
+        borderSkipped:      'left',
+        maxBarThickness:    22,
+        categoryPercentage: 0.7,
+        barPercentage:      0.9,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { right: 56 } },
+      // Click a bar to see exactly which merchants (and which cards) make up
+      // that category's total — the drill-down behind "where was this spent".
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const [cid] = rows[elements[0].index];
+        openCategoryDetail(cid === '_uncategorized' ? '_uncat' : cid);
+      },
+      onHover: (evt, elements) => {
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      },
+      plugins: {
+        // Each bar is already identified by its own y-axis label — a legend
+        // here would just restate the axis.
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#141929',
+          borderColor:     '#1e2438',
+          borderWidth:     1,
+          titleColor:      '#8b93ab',
+          bodyColor:       '#dde2f0',
+          callbacks: { label: ctx => `  ${money(ctx.raw)}` }
+        },
+        datalabels: {
+          anchor:   'end',
+          align:    'end',
+          offset:   4,
+          color:    '#8b93ab',
+          font:     { size: 11, family: "'JetBrains Mono', monospace" },
+          formatter: v => money(v),
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { color: '#4a5168', font: { size: 10 }, callback: v => '$' + v.toLocaleString('en-US') },
+          grid:  { color: '#1e2438' }
+        },
+        y: {
+          ticks: { color: '#8b93ab', font: { size: 12 } },
+          grid:  { display: false }
+        }
+      }
+    }
+  });
+}
+
+// Stacked vertical bars: category composition per month. Past ~7 color classes
+// blur, so we show the top categories by total and fold the rest into "Otras"
+// (a neutral gray) — the always-present legend carries identity.
+const TREND_MAX_CATS = 6;
+
+function renderCategoryByMonth() {
+  const { months, byCat, totals } = computeCategoryByMonth(periodMonthsSet());
+  const body = document.getElementById('category-body');
+
+  if (!months.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin transacciones para categorizar aún.')}</div></div>`;
+    if (categoryChartInst) { categoryChartInst.destroy(); categoryChartInst = null; }
+    return;
+  }
+
+  // Rank real categories by total; keep top N, fold the remainder + uncategorized into "Otras".
+  const ranked = Object.keys(totals)
+    .filter(cid => cid !== '_uncat')
+    .sort((a, b) => totals[b] - totals[a]);
+  const shown  = ranked.slice(0, TREND_MAX_CATS);
+  const folded = new Set([...ranked.slice(TREND_MAX_CATS), '_uncat']);
+
+  const datasets = shown.map(cid => ({
+    label:           catLabel(cid),
+    data:            months.map(m => byCat[cid][m] || 0),
+    backgroundColor: catColor(cid),
+    stack:           's',
+    borderWidth:     { top: 2 },          // 2px surface gap between stacked segments
+    borderColor:     '#0e1220',
+    maxBarThickness: 46,
+  }));
+  const hasFolded = [...folded].some(cid => byCat[cid]);
+  if (hasFolded) {
+    datasets.push({
+      label:           tr('Otras'),
+      data:            months.map(m => [...folded].reduce((s, cid) => s + ((byCat[cid] || {})[m] || 0), 0)),
+      backgroundColor: UNCATEGORIZED_COLOR,
+      stack:           's',
+      borderWidth:     { top: 2 },
+      borderColor:     '#0e1220',
+      maxBarThickness: 46,
+    });
+  }
+
+  body.innerHTML = `<div class="chart-container"><canvas id="category-chart"></canvas></div>`;
+  if (categoryChartInst) categoryChartInst.destroy();
+  const ctx = document.getElementById('category-chart').getContext('2d');
+  categoryChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, labels: { color: '#8b93ab', font: { size: 11 }, boxWidth: 14, padding: 12 } },
+        tooltip: {
+          backgroundColor: '#141929', borderColor: '#1e2438', borderWidth: 1,
+          titleColor: '#8b93ab', bodyColor: '#dde2f0',
+          callbacks: { label: c => `  ${c.dataset.label}: ${money(c.raw)}` }
+        },
+        datalabels: { display: false }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#4a5168', font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { display: false } },
+        y: { stacked: true, beginAtZero: true, ticks: { color: '#4a5168', font: { size: 10 }, callback: v => '$' + v.toLocaleString('en-US') }, grid: { color: '#1e2438' } }
+      }
+    }
+  });
+}
+
+/* ── Period insight tiles (scoped by the global period) ── */
+function renderInsights() {
+  const grid = document.getElementById('insight-grid');
+  const monthsFilter = periodMonthsSet();
+  const months = monthsFilter ? [...monthsFilter].sort() : allMonths();
+  if (!months.length) { grid.innerHTML = ''; return; }
+
+  const { totals: catTotals } = computeCategoryByMonth(monthsFilter);
+  const monthTotals = {};
+  eachSpendTx((t, m) => { monthTotals[m] = (monthTotals[m] || 0) + txUsd(t); }, monthsFilter);
+
+  const total      = Object.values(monthTotals).reduce((a, b) => a + b, 0);
+  const monthlyAvg = total / months.length;
+  // Corte months average 365.25/12 days, so weeks = months × 1461 / 48 and
+  // total / weeks = total × 336 / (months × 1461) (the APK's formula).
+  const weeklyAvg  = total * 336 / (months.length * 1461);
+  const latest     = months[months.length - 1];
+  const latestVal  = monthTotals[latest] || 0;
+
+  // Trend: latest month vs the average of up to 3 prior months.
+  const prior = months.slice(Math.max(0, months.length - 4), months.length - 1);
+  const priorAvg = prior.length ? prior.reduce((s, m) => s + (monthTotals[m] || 0), 0) / prior.length : 0;
+  const deltaPct = priorAvg > 0 ? (latestVal - priorAvg) / priorAvg * 100 : null;
+
+  const { recurring, recurringTotal } = computeRecurring(monthsFilter);
+  const recurringPerMonth = recurringTotal / months.length;
+
+  const topCat = Object.entries(catTotals).filter(([cid]) => cid !== '_uncat')
+    .sort((a, b) => b[1] - a[1])[0];
+  const merchants = computeMerchants(monthsFilter);
+  const topMerchant = Object.entries(merchants).sort((a, b) => b[1].usd - a[1].usd)[0];
+
+  const priorSpan = prior.length > 1 ? `${prior[0]} → ${prior[prior.length - 1]}` : prior[0];
+  const trendSub = deltaPct == null ? tr('sin base de comparación')
+    : `<span class="insight-delta ${deltaPct >= 0 ? 'up' : 'down'}">${deltaPct >= 0 ? '↑' : '↓'} ${Math.abs(deltaPct).toFixed(0)}%</span> ${tr('vs. promedio previo')} ${money(priorAvg)} (${priorSpan})`;
+
+  const tiles = [
+    { label: `${tr('Total')} (${months.length} ${months.length === 1 ? tr('mes') : tr('meses')})`, val: money(total), sub: `${months[0]} → ${latest}` },
+    { label: tr('Promedio mensual'), val: money(monthlyAvg), sub: `${money(weeklyAvg)}/${tr('semana')} · ${Object.keys(merchants).length} ${tr('comercios distintos')}` },
+    { label: `${tr('Último mes')} · ${latest}`, val: money(latestVal), sub: trendSub, small: false },
+    { label: tr('Gasto recurrente'), val: money(recurringPerMonth) + `<span style="font-size:12px;color:var(--text-3)">/${tr('mes')}</span>`, sub: `${recurring.length} ${tr('comercios habituales')}`, small: true },
+    topCat ? { label: tr('Categoría principal'), val: `<span class="insight-cat-dot" style="background:${catColor(topCat[0])}"></span>${esc(catLabel(topCat[0]))}`, sub: `${money(topCat[1])} · ${(topCat[1] / total * 100).toFixed(0)}% ${tr('del total')}`, small: true }
+           : { label: tr('Categoría principal'), val: '—', sub: '' },
+    topMerchant ? { label: tr('Comercio principal'), val: `<span style="font-size:15px">${esc(topMerchant[0])}</span>`, sub: `${money(topMerchant[1].usd)} · ${topMerchant[1].n} ${tr('cargo(s)')}`, small: true }
+                : { label: tr('Comercio principal'), val: '—', sub: '' },
+  ];
+
+  grid.innerHTML = tiles.map(tile => `
+    <div class="insight-tile">
+      <div class="insight-label">${esc(tile.label)}</div>
+      <div class="insight-val ${tile.small ? 'small' : ''}">${tile.val}</div>
+      ${tile.sub ? `<div class="insight-sub">${tile.sub}</div>` : ''}
+    </div>`).join('');
+}
+
+/* ── Uncategorized review — the "dynamic check" panel: every merchant the
+   keyword rules didn't match, ranked by spend, with an inline categorize
+   editor per row. Saving a rule here re-runs the full render(), so it
+   applies retroactively everywhere (charts, insights, recurring list) —
+   not just to this list. ── */
+let uncatEditIndex = null;
+let uncatListCache = [];
+
+function renderUncategorized() {
+  const merchants = computeMerchants();
+  uncatListCache = Object.entries(merchants)
+    .filter(([, r]) => r.nCargo && r.cid === '_uncat')  // credit-only merchants can't be cleared here
+    .sort((a, b) => b[1].usd - a[1].usd)
+    .map(([name, r]) => ({ name, ...r }));
+
+  const body  = document.getElementById('uncat-body');
+  const label = document.getElementById('uncat-count-label');
+
+  if (!uncatListCache.length) {
+    label.textContent = '';
+    body.innerHTML = `<div class="empty" style="padding:24px 0"><div class="empty-text">✓ ${tr('Todos los comercios están categorizados.')}</div></div>`;
+    return;
+  }
+
+  const total = uncatListCache.reduce((s, r) => s + r.usd, 0);
+  label.textContent = `${uncatListCache.length} ${tr('comercio(s)')} · ${money(total)}`;
+
+  body.innerHTML = uncatListCache.map((r, i) =>
+    uncatEditIndex === i ? renderUncatEditor(r, i) : `
+      <div class="uncat-row">
+        <div>
+          <div class="uncat-name">${esc(r.name)}</div>
+          <div class="uncat-meta">${r.nCargo} ${tr('cargo(s)')} · ${r.months.size} ${tr('mes(es)')}</div>
+        </div>
+        <div class="uncat-actions">
+          <span class="recur-avg">${money(r.usd)}</span>
+          <button class="cat-add-btn" onclick="startEditUncat(${i})">${tr('Categorizar')}</button>
+        </div>
+      </div>`
+  ).join('');
+}
+
+function renderUncatEditor(r, i) {
+  // The merchant name is already the normalized/generalized form — a good
+  // default keyword so the rule matches this merchant everywhere.
+  const options = Object.entries(CATEGORIES)
+    .filter(([cid]) => cid !== 'installments')  // auto-assigned by tx type, not a manual choice
+    .map(([cid, c]) => `<option value="${cid}">${esc(catLabelFor(cid, c.label))}</option>`).join('');
+  return `
+    <div class="uncat-row">
+      <div class="cat-editor">
+        <input type="text" class="cat-editor-input" id="uncat-kw-${i}" value="${esc(r.name)}" />
+        <select class="cat-editor-select" id="uncat-sel-${i}">${options}</select>
+        <button class="cat-editor-save" onclick="saveUncatCategory(${i})" title="Guardar">✓</button>
+        <button class="cat-editor-cancel" onclick="cancelEditUncat()" title="Cancelar">×</button>
+      </div>
+    </div>`;
+}
+
+function startEditUncat(i) { uncatEditIndex = i; renderUncategorized(); }
+function cancelEditUncat() { uncatEditIndex = null; renderUncategorized(); }
+
+async function saveUncatCategory(i) {
+  const keyword  = document.getElementById(`uncat-kw-${i}`).value.trim();
+  const category = document.getElementById(`uncat-sel-${i}`).value;
+  if (!keyword) { toast('⚠', tr('Escribe un texto para identificar el comercio'), true); return; }
+
+  try {
+    const res = await fetch('/api/categories/assign', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body:    JSON.stringify({ keyword, category })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast('⚠', data.error || tr('Error al guardar categoría'), true); return; }
+
+    // Apply locally so every chart/panel updates immediately, without a refetch.
+    Object.values(CATEGORIES).forEach(c => {
+      const idx = c.keywords.indexOf(data.keyword);
+      if (idx > -1) c.keywords.splice(idx, 1);
+    });
+    CATEGORIES[data.category].keywords.push(data.keyword);
+    rebuildCategoryLookup();
+
+    uncatEditIndex = null;
+    render();  // this merchant now affects the trend, category charts, and insights too
+    toast('✓', `${tr('Categorizado como')} ${catLabelFor(data.category, CATEGORIES[data.category].label)}`);
+  } catch (e) {
+    toast('⚠', tr('Error de red al guardar categoría'), true);
+  }
+}
+
+/* ── New category ── */
+function openNewCategory() {
+  document.getElementById('new-cat-label').value = '';
+  document.getElementById('new-cat-id').value = '';
+  document.getElementById('new-category-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('new-cat-label').focus(), 50);
+}
+
+function closeNewCategory() {
+  document.getElementById('new-category-backdrop').classList.remove('open');
+}
+
+async function saveNewCategory() {
+  const btn = document.getElementById('new-cat-save');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/categories', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body:    JSON.stringify({
+        id:    document.getElementById('new-cat-id').value.trim(),
+        label: document.getElementById('new-cat-label').value,
+        color: document.getElementById('new-cat-color').value,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast('⚠', data.error || tr('Error al guardar categoría'), true); return; }
+    CATEGORIES[data.id] = data.category;
+    rebuildCategoryLookup();
+    closeNewCategory();
+    render();   // the new category shows up in every categorize dropdown
+    toast('✓', `${tr('Categoría creada:')} ${data.category.label}`);
+  } catch (e) {
+    toast('⚠', tr('Error de red al guardar categoría'), true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── Recurring payments ── */
+function renderRecurring() {
+  const body = document.getElementById('recurring-body');
+  const { recurring, recurringTotal, monthsTotal } = computeRecurring(periodMonthsSet());
+
+  if (!recurring.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Aún no hay comercios recurrentes suficientes.')}</div></div>`;
+    return;
+  }
+
+  const rows = recurring.map(r => `
+    <div class="recur-row">
+      <div class="recur-name">
+        <span class="insight-cat-dot" style="background:${catColor(r.cid)}"></span>
+        <div>${esc(r.name)}<div class="expense-meta">${tr('Último cobro:')} ${esc(r.lastDate)}</div></div>
+      </div>
+      <div class="recur-months">
+        ${r.monthsCount === monthsTotal ? `<span class="recur-badge">${tr('todos los meses')}</span>` : `${r.monthsCount}/${monthsTotal} ${tr('meses')}`}
+      </div>
+      <div class="recur-avg">${money(r.avg)}<span style="font-size:11px;color:var(--text-3)">/${tr('mes')}</span></div>
+    </div>`).join('');
+
+  // Same math as the "Gasto recurrente" insight tile (recurringTotal / monthsTotal)
+  // so the two numbers never disagree.
+  const totalPerMonth = recurringTotal / monthsTotal;
+  body.innerHTML = rows + `
+    <div class="recur-row recur-total-row">
+      <div class="recur-name"><strong>${tr('Total')}</strong></div>
+      <div class="recur-months">${recurring.length} ${tr('comercio(s)')}</div>
+      <div class="recur-avg" style="font-size:15px;color:var(--text)">${money(totalPerMonth)}<span style="font-size:11px;color:var(--text-3)">/${tr('mes')}</span></div>
+    </div>`;
+}
+
+/* ── Active subscriptions ── */
+function renderSubscriptions() {
+  const body = document.getElementById('subscriptions-body');
+  const subs = computeActiveSubscriptions(periodMonthsSet());
+  if (!subs.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin suscripciones activas en el período.')}</div></div>`;
+    return;
+  }
+  const rows = subs.map(s => `
+    <div class="recur-row">
+      <div class="recur-name">
+        <span class="insight-cat-dot" style="background:${catColor(s.cid)}"></span>
+        <div>${esc(s.name)}<div class="expense-meta">${tr('Último cobro:')} ${esc(s.lastDate)}</div></div>
+      </div>
+      <div class="recur-months">${s.monthsCount} ${tr('meses activos')}</div>
+      <div class="recur-avg">${money(s.avgUsd)}<span style="font-size:11px;color:var(--text-3)">/${tr('mes')}</span></div>
+    </div>`).join('');
+  const total = subs.reduce((s, r) => s + r.avgUsd, 0);
+  body.innerHTML = rows + `
+    <div class="recur-row recur-total-row">
+      <div class="recur-name"><strong>${tr('Total')}</strong></div>
+      <div class="recur-months">${subs.length} ${tr('suscripción(es)')}</div>
+      <div class="recur-avg" style="font-size:15px;color:var(--text)">${money(total)}<span style="font-size:11px;color:var(--text-3)">/${tr('mes')}</span></div>
+    </div>`;
+}
+
+/* ── Servicios Básicos — a curated set of utility merchants, each with its
+   own monthly trendline. "Pagos Recurrentes" above already lists these
+   among other recurring merchants, but as one flat average each; seeing
+   whether a bill is trending up or down needs its own line per merchant,
+   which a flat average can't show. Matched by raw description substring
+   (same technique as categorizeByKeyword), independent of the category
+   system, since the point here is one merchant at a time, not a category. */
+const UTILITY_MERCHANTS = UTILITY_PROVIDERS.map(p => ({ key: p.keyword, label: p.label, color: p.color }));
+
+function computeUtilityTrend(keyword) {
+  const byMonth = {};
+  eachSpendTx((t, month) => {
+    if (!t.descripcion.toUpperCase().includes(keyword)) return;
+    byMonth[month] = (byMonth[month] || 0) + txUsd(t);
+  });
+  return byMonth;
+}
+
+let utilityChartInsts = [];
+
+function renderUtilitiesTrend() {
+  const body = document.getElementById('utilities-body');
+  utilityChartInsts.forEach(c => c.destroy());
+  utilityChartInsts = [];
+
+  const tiles = UTILITY_MERCHANTS
+    .map(u => ({ ...u, byMonth: computeUtilityTrend(u.key) }))
+    .map(u => ({ ...u, months: Object.keys(u.byMonth).sort() }))
+    .filter(u => u.months.length > 0);
+
+  if (!tiles.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin datos suficientes aún.')}</div></div>`;
+    return;
+  }
+
+  body.innerHTML = tiles.map((u, i) => {
+    const avg = u.months.reduce((s, m) => s + u.byMonth[m], 0) / u.months.length;
+    return `
+      <div class="utility-tile">
+        <div class="utility-tile-header">
+          <span class="utility-tile-name">${esc(tr(u.label))}</span>
+          <span class="utility-tile-avg">${money(avg)}<span style="font-size:10px;color:var(--text-3)">/${tr('mes')}</span></span>
+        </div>
+        <div style="height:60px"><canvas id="utility-chart-${i}"></canvas></div>
+      </div>`;
+  }).join('');
+
+  // Same Chart.js 0-width-canvas gotcha as the card trend chart — only build
+  // instances once this tab's container is actually visible.
+  const categoriasVisible = document.getElementById('view-categorias').style.display !== 'none';
+  if (!categoriasVisible) return;
+
+  tiles.forEach((u, i) => {
+    const ctx = document.getElementById(`utility-chart-${i}`).getContext('2d');
+    utilityChartInsts.push(new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: u.months,
+        datasets: [{
+          data: u.months.map(m => u.byMonth[m]),
+          borderColor: u.color,
+          backgroundColor: 'transparent',
+          tension: 0.35,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          datalabels: { display: false },
+          tooltip: {
+            backgroundColor: '#141929', borderColor: '#1e2438', borderWidth: 1,
+            titleColor: '#8b93ab', bodyColor: '#dde2f0',
+            callbacks: { label: ctx => `  ${money(ctx.raw)}` }
+          }
+        },
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    }));
+  });
+}
+
+const BIG_EXPENSE_LIMIT = 10;
+
+function renderBigExpenses() {
+  const body = document.getElementById('big-expense-body');
+  const entries = computeBigExpenses(6).slice(0, BIG_EXPENSE_LIMIT);
+
+  if (!entries.length) {
+    body.innerHTML = `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin transacciones en los últimos 6 meses.')}</div></div>`;
+    return;
+  }
+
+  body.innerHTML = entries.map(e => {
+    if (e.kind === 'cuota') {
+      return `
+        <div class="expense-row">
+          <div>
+            <div class="expense-name">
+              <span class="expense-badge">${tr('A PLAZO')}</span>
+              ${esc(e.descripcion)} · ${esc(e.cardName)}
+            </div>
+            <div class="expense-meta">
+              <span>${e.n}/${e.total}</span> ${tr('cuotas')} · ${money(e.monthlyUsd)}/${tr('mes')} ·
+              ${tr('pagado')} <span>${money(e.paidUsd)}</span>
+              ${e.remainingUsd > 0 ? ` · ${tr('restante')} <span>${money(e.remainingUsd)}</span>` : ` · <span>${tr('completada')}</span>`}
+            </div>
+          </div>
+          <div class="expense-amount">${money(e.usd)}</div>
+        </div>`;
+    }
+    return `
+      <div class="expense-row">
+        <div>
+          <div class="expense-name">
+            <span class="insight-cat-dot" style="background:${catColor(e.cid)}"></span>
+            ${esc(e.descripcion)}
+          </div>
+          <div class="expense-meta">${esc(e.cardName)} · ${esc(e.fecha)} · ${esc(catLabel(e.cid))}</div>
+        </div>
+        <div class="expense-amount">${money(e.usd)}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderCards() {
+  const el = document.getElementById('cards-section');
+  const keys = Object.keys(S);
+
+  if (!keys.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">💳</div><div class="empty-text">${tr('No hay estados de cuenta cargados aún.')}<br/>${tr('Sube tu primer archivo arriba.')}</div></div>`;
+    return;
+  }
+
+  // Tabs
+  const activeKey = el.dataset.activeKey && S[el.dataset.activeKey] ? el.dataset.activeKey : keys[0];
+  el.dataset.activeKey = activeKey;
+
+  const tabs = keys.map(k => `
+    <button class="tab ${k === activeKey ? 'active' : ''}" onclick="switchCardTab('${k}')">
+      ${esc(S[k].card_name)}
+    </button>`).join('');
+
+  const activeCard = S[activeKey];
+
+  // Per-card KPIs
+  const allTxs    = activeCard.statements.flatMap(st => st.transactions);
+  const cargos    = allTxs.filter(t => t.tipo === 'cargo');
+  const totalUSD  = cargos.reduce((s, t) => s + t.monto_usd, 0);
+  const numStmts  = activeCard.statements.length;
+
+  const highest    = computeCardHighestExpense(activeKey);
+  const cardMonths = computeMonthlySpend().perCard[activeKey];
+
+  const stmtRows = activeCard.statements.map(st => {
+    const stCargos    = st.transactions.filter(t => t.tipo === 'cargo');
+    const stUSD       = stCargos.reduce((s, t) => s + t.monto_usd, 0);
+    const stCount     = st.transactions.length;
+    const cargoCount  = stCargos.length;
+
+    return `
+      <div class="stmt-row">
+        <div>
+          <div class="stmt-date">${tr('Corte:')} ${esc(st.fecha_corte)}</div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:2px">${tr('Límite:')} ${esc(st.fecha_limite) || '—'}</div>
+        </div>
+        <div class="stmt-amounts">
+          <div class="stmt-amount-label">${tr('Gasto USD')}</div>
+          <div class="stmt-amount-val" style="color:var(--red)">${stUSD ? money(stUSD) : '—'}</div>
+        </div>
+        <div class="stmt-count">
+          <span>${cargoCount}</span> ${tr('cargo(s)')} · <span>${stCount}</span> ${tr('total')}
+        </div>
+        <div class="stmt-actions">
+          <a class="btn-icon" href="/transactions/${st.id}" onclick="sessionStorage.setItem('lastView','tarjeta');sessionStorage.setItem('lastCardKey','${activeKey}')">${tr('Ver detalle →')}</a>
+          <button class="btn-del" onclick="deleteStatement('${activeKey}','${st.id}')" title="Eliminar estado de cuenta" aria-label="Eliminar estado de cuenta del ${esc(st.fecha_corte)}">×</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="tabs">${tabs}</div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header">
+        <span class="card-title">${esc(activeCard.card_name)}</span>
+        <div style="display:flex;gap:16px;font-size:12px;color:var(--text-3)">
+          <span>${numStmts} ${tr('estado(s)')}</span>
+          <span>${money(totalUSD)} ${tr('total')}</span>
+        </div>
+      </div>
+
+      <div class="card-summary-row">
+        <div class="card-trend-block">
+          <div class="stmt-amount-label">${tr('Tendencia mensual')}</div>
+          ${cardMonths && Object.keys(cardMonths.byMonth).length
+            ? `<div style="height:70px"><canvas id="card-trend-chart"></canvas></div>`
+            : `<div style="font-size:11px;color:var(--text-3);padding:8px 0">${tr('Sin datos suficientes')}</div>`}
+        </div>
+        <div class="card-highest-block">
+          <div class="stmt-amount-label">${tr('Gasto más alto · últimos 6 meses')}</div>
+          ${highest ? `
+            <div style="font-size:13px;color:var(--text);font-weight:600;font-family:var(--mono)">${money(highest.usd)}</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px">
+              ${esc(highest.kind === 'cargo' ? normalizeMerchant(highest.descripcion) : tr(highest.descripcion))} · ${esc(highest.fecha)}
+            </div>` : `<div style="font-size:11px;color:var(--text-3);padding:8px 0">${tr('Sin datos suficientes')}</div>`}
+        </div>
+      </div>
+
+      ${activeCard.statements.length
+        ? `<div class="stmt-list">${stmtRows}</div>`
+        : `<div class="empty" style="padding:32px 0"><div class="empty-text">${tr('Sin estados de cuenta para esta tarjeta.')}</div></div>`}
+    </div>`;
+
+  // Chart.js sizes a canvas against its container's width at creation time —
+  // building it while "Por Tarjeta" isn't the visible tab gives a 0-width
+  // canvas that renders blank (same gotcha as the trend/category charts).
+  // render() calls renderCards() unconditionally *before* switchView() has
+  // set view-tarjeta's display, so currentView alone isn't a safe check
+  // here — read the container's actual DOM visibility instead. switchView()
+  // re-calls renderCards() once it's actually visible to cover that case.
+  if (cardTrendChartInst) { cardTrendChartInst.destroy(); cardTrendChartInst = null; }
+  const tarjetaVisible = document.getElementById('view-tarjeta').style.display !== 'none';
+  if (cardMonths && Object.keys(cardMonths.byMonth).length && tarjetaVisible) {
+    const months = Object.keys(cardMonths.byMonth).sort();
+    const ctx = document.getElementById('card-trend-chart').getContext('2d');
+    cardTrendChartInst = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: [{
+          data: months.map(m => cardMonths.byMonth[m]),
+          borderColor: CHART_PALETTE[0],
+          backgroundColor: 'transparent',
+          tension: 0.35,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          datalabels: { display: false },
+          tooltip: {
+            backgroundColor: '#141929', borderColor: '#1e2438', borderWidth: 1,
+            titleColor: '#8b93ab', bodyColor: '#dde2f0',
+            callbacks: { label: ctx => `  ${money(ctx.raw)}` }
+          }
+        },
+        scales: {
+          x: { display: false },
+          y: { display: false }
+        }
+      }
+    });
+  }
+}
+
+function switchCardTab(key) {
+  document.getElementById('cards-section').dataset.activeKey = key;
+  renderCards();
+}
+
+/* ── Upload ── */
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFileSelect(file);
+});
+
+async function handleFileSelect(file) {
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+
+  const zone = document.getElementById('upload-zone');
+  zone.classList.add('busy');
+  if (file.name.toLowerCase().endsWith('.pdf')) toast('⏳', tr('Convirtiendo PDF a markdown…'));
+
+  try {
+    const res  = await fetch('/api/upload-statement', {
+      method:  'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN },
+      body:    fd
+    });
+    const data = await res.json();
+    if (!res.ok) { toast('⚠', data.error || tr('Error al procesar archivo'), true); return; }
+
+    pendingParsed = data;
+    showPreview(data);
+  } catch(e) {
+    toast('⚠', tr('Error de red al subir archivo'), true);
+  } finally {
+    // The busy state stays until the request actually resolves — not tied to
+    // the toast's own fixed auto-hide timer, which can expire before a slow
+    // PDF conversion finishes.
+    zone.classList.remove('busy');
+  }
+  // Reset file input so same file can be re-uploaded
+  document.getElementById('file-input').value = '';
+}
+
+/* ── Search email for statements ── */
+async function searchEmailStatements() {
+  const btn    = document.getElementById('email-search-btn');
+  const status = document.getElementById('email-search-status');
+
+  btn.disabled = true;
+  status.textContent = tr('Buscando en correo…');
+
+  try {
+    const res  = await fetch('/api/fetch-email-statements', {
+      method:  'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      status.textContent = '';
+      toast('⚠', data.error || tr('Error al buscar en el correo'), true);
+      return;
+    }
+
+    if (data.found === 0) {
+      status.textContent = tr('Sin correos nuevos encontrados');
+      toast('📧', tr('No se encontraron estados de cuenta en el correo'));
+    } else {
+      const imported = data.imported.length;
+      const failed   = data.failed.length;
+      status.textContent = `${imported} ${tr('importado(s)')}${failed ? `, ${failed} ${tr('con error')}` : ''} · ${tr('de')} ${data.found} ${tr('correo(s)')}`;
+      if (imported > 0) {
+        const names = data.imported.map(r => r.card_name).join(', ');
+        toast('✓', `${imported} ${tr('estado(s) importado(s):')} ${names}`);
+      }
+      if (failed > 0 && imported === 0) {
+        toast('⚠', `${failed} ${tr('correo(s) no se pudieron procesar')}`, true);
+      }
+    }
+
+    const stmtsRes = await fetch('/api/statements');
+    S = await stmtsRes.json();
+    render();
+  } catch(e) {
+    status.textContent = '';
+    toast('⚠', tr('Error de red al buscar en el correo'), true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showPreview(data) {
+  // Only one modal should be visible at a time — a manual upload from
+  // inside the upload modal ends here, so close it before the confirm
+  // preview opens on top of it.
+  closeUploadModal();
+  // A statement whose layout changed (e.g. the bank tweaks its PDF) can still
+  // yield a corte date but match zero transaction lines — it would otherwise
+  // save "successfully" as an empty statement. Flag that explicitly so the
+  // user doesn't unknowingly store a blank one.
+  const zeroTx = !data.tx_count;
+  // An empty parse replacing a stored corte would wipe a good statement's
+  // transactions — refused here and by /api/confirm-statement (APK rule).
+  const blocked = zeroTx && data.replaces_existing;
+  const txColor = zeroTx ? 'var(--amber)' : 'var(--green)';
+  const note = (color, html) => `<p style="font-size:12px;color:${color};margin-top:14px;line-height:1.6">${html}</p>`;
+  const v = data.validation;
+  const validationVal = !v ? `<span class="parse-val" style="color:var(--text-3)">${tr('sin total impreso')}</span>`
+    : v.ok ? `<span class="parse-val" style="color:var(--green)">✓ ${tr('cuadra')}</span>`
+    : `<span class="parse-val" style="color:var(--amber)">⚠ ${tr('no cuadra')}</span>`;
+  const warnings = [
+    blocked ? note('var(--red)', `⛔ ${tr('No se detectó ninguna transacción y ya existe un estado con esta fecha de corte. No se puede reemplazar con uno vacío.')}`)
+      : zeroTx ? note('var(--amber)', `⚠ ${tr('No se detectó ninguna transacción. Puede que el formato del archivo haya cambiado.')} ${tr('Guardar de todos modos almacenará un estado de cuenta vacío.')}`)
+      : '',
+    data.replaces_existing && !blocked ? note('var(--amber)', `⚠ ${tr('Ya existe un estado de esta tarjeta con esta fecha de corte; guardar lo reemplazará.')}`) : '',
+    data.unparsed_count ? note('var(--amber)', `⚠ ${tr('Algunas líneas parecen transacciones pero no se pudieron leer. Revísalas en el detalle del estado después de guardar.')}`) : '',
+    v && !v.ok ? note('var(--amber)', `⚠ ${tr('El total calculado no cuadra con el Pago de Contado impreso. Es normal si hubo saldo anterior o un pago a mitad de ciclo; si no, revisa el detalle.')}<br>
+        <span style="font-family:var(--mono)">${tr('calculado')} ${money(v.computed_usd)} ${tr('vs impreso')} ${money(v.printed_usd)} (${tr('dif')} ${money(v.diff_usd)})</span>`) : '',
+  ].join('');
+  document.getElementById('preview-body').innerHTML = `
+    <div class="parse-result">
+      <div class="parse-row"><span class="parse-label">${tr('Tarjeta detectada')}</span><span class="parse-val" style="color:var(--accent)">${esc(data.card_name)}</span></div>
+      <div class="parse-row"><span class="parse-label">${tr('Fecha de corte')}</span><span class="parse-val">${esc(data.fecha_corte)}</span></div>
+      <div class="parse-row"><span class="parse-label">${tr('Transacciones encontradas')}</span><span class="parse-val" style="color:${txColor}">${Number(data.tx_count) || 0}</span></div>
+      ${data.unparsed_count ? `<div class="parse-row"><span class="parse-label">${tr('Líneas no reconocidas')}</span><span class="parse-val" style="color:var(--amber)">${Number(data.unparsed_count)}</span></div>` : ''}
+      <div class="parse-row"><span class="parse-label">${tr('Validación vs Pago de Contado')}</span>${validationVal}</div>
+    </div>
+    ${warnings || note('var(--text-3)', tr('Revisa los datos y confirma para guardar.'))}`;
+  const confirmBtn = document.getElementById('confirm-upload-btn');
+  confirmBtn.disabled = blocked;
+  document.getElementById('preview-backdrop').classList.add('open');
+  setTimeout(() => (blocked ? document.querySelector('#preview-backdrop .btn-ghost') : confirmBtn)?.focus(), 50);
+}
+
+function openUploadModal() {
+  document.getElementById('upload-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('email-search-btn')?.focus(), 50);
+}
+
+function closeUploadModal() {
+  document.getElementById('upload-backdrop').classList.remove('open');
+}
+
+async function cancelUpload() {
+  document.getElementById('preview-backdrop').classList.remove('open');
+  // Nothing has been persisted yet — just tell the server to drop the pending parse.
+  // Pass pending_id so this only clears OUR upload, not a newer one from another tab.
+  try {
+    await fetch('/api/cancel-upload', {
+      method:  'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ pending_id: pendingParsed?.pending_id })
+    });
+  } catch(e) {
+    // Non-fatal: the pending upload is harmlessly overwritten by the next one either way.
+  }
+  pendingParsed = null;
+}
+
+async function confirmUpload() {
+  document.getElementById('preview-backdrop').classList.remove('open');
+  try {
+    const res = await fetch('/api/confirm-statement', {
+      method:  'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ pending_id: pendingParsed?.pending_id })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast('⚠', data.error || tr('Error al guardar estado de cuenta'), true); pendingParsed = null; return; }
+
+    const stmtsRes = await fetch('/api/statements');
+    S = await stmtsRes.json();
+    document.getElementById('cards-section').dataset.activeKey = data.card_key;
+    render();
+    toast('✓', `${tr('Estado de')} ${data.card_name} ${tr('guardado')} · ${data.tx_count} ${tr('transacciones')}`);
+  } catch(e) {
+    toast('⚠', tr('Error al guardar estado de cuenta'), true);
+  }
+  pendingParsed = null;
+}
+
+/* ── Delete statement ── */
+async function deleteStatement(cardKey, stmtId) {
+  if (!confirm(tr('¿Eliminar este estado de cuenta? Esta acción no se puede deshacer.'))) return;
+  try {
+    await fetch(`/api/statements/${cardKey}/${stmtId}`, {
+      method:  'DELETE',
+      headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    const res = await fetch('/api/statements');
+    S = await res.json();
+    render();
+    toast('🗑', tr('Estado de cuenta eliminado'));
+  } catch(e) {
+    toast('⚠', tr('Error al eliminar'), true);
+  }
+}
+
+/* ── Toast ── */
+let toastTimer;
+function toast(icon, msg, isError=false) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent  = msg;
+  el.classList.toggle('error', isError);
+  el.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    cancelUpload();
+    closeCategoryDetail();
+    closeUploadModal();
+    closeNewCategory();
+  }
+});
+
+boot();
+</script>
+</body>
+</html>
